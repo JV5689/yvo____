@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Expense } from '../../models/Modules/Expense.js';
+import { prisma } from '../../src/config/db.js';
 
 // Get all expenses
 export const getExpenses = async (req: Request, res: Response) => {
@@ -7,12 +7,15 @@ export const getExpenses = async (req: Request, res: Response) => {
         const { companyId, start, end } = req.query;
         if (!companyId) return res.status(400).json({ message: 'Company ID is required' });
 
-        const query: any = { companyId, isDeleted: false };
+        const query: any = { companyId: String(companyId), isDeleted: false };
         if (start && end) {
-            query.date = { $gte: new Date(start as string), $lte: new Date(end as string) };
+            query.date = { gte: new Date(start as string), lte: new Date(end as string) };
         }
 
-        const expenses = await Expense.find(query).sort({ date: -1 });
+        const expenses = await prisma.expense.findMany({
+            where: query,
+            orderBy: { date: 'desc' }
+        });
         res.status(200).json(expenses);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -28,16 +31,17 @@ export const createExpense = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Company ID and Amount are required' });
         }
 
-        const newExpense = new Expense({
-            companyId,
-            category,
-            amount,
-            date,
-            description,
-            paymentMethod
+        const newExpense = await prisma.expense.create({
+            data: {
+                companyId: String(companyId),
+                category,
+                amount: Number(amount),
+                date: date ? new Date(date) : undefined,
+                description,
+                paymentMethod
+            }
         });
 
-        await newExpense.save();
         res.status(201).json(newExpense);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -50,7 +54,14 @@ export const updateExpense = async (req: Request, res: Response) => {
         const { id } = req.params;
         const updates = req.body;
 
-        const expense = await Expense.findByIdAndUpdate(id, updates, { new: true });
+        // Ensure decimal and date casts if present in updates
+        if (updates.amount) updates.amount = Number(updates.amount);
+        if (updates.date) updates.date = new Date(updates.date);
+
+        const expense = await prisma.expense.update({
+            where: { id: String(id) },
+            data: updates
+        });
 
         if (!expense) {
             return res.status(404).json({ message: 'Expense not found' });
@@ -66,7 +77,10 @@ export const updateExpense = async (req: Request, res: Response) => {
 export const deleteExpense = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const expense = await Expense.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
+        const expense = await prisma.expense.update({
+            where: { id: String(id) },
+            data: { isDeleted: true }
+        });
 
         if (!expense) {
             return res.status(404).json({ message: 'Expense not found' });

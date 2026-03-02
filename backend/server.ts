@@ -1,7 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import mongoose from 'mongoose';
+import connectDb from './src/config/db.js';
 
 import saRoutes from './routes/saRoutes.js';
 import companyRoutes from './routes/companyRoutes.js';
@@ -34,9 +34,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Database Connection
-mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/yvo')
-  .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.error('MongoDB Connection Error:', err));
+connectDb();
 
 // Routes
 app.use('/api/sa', saRoutes);

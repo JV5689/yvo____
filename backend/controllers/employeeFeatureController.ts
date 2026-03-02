@@ -1,16 +1,14 @@
 import { Request, Response } from 'express';
-import { SalaryRecord } from '../models/Modules/SalaryRecord.js';
-import { LeaveRequest } from '../models/Modules/LeaveRequest.js';
-import { CalendarEvent } from '../models/Modules/CalendarEvent.js';
-import { BroadcastMessage } from '../models/Modules/BroadcastMessage.js';
-import { BroadcastGroup } from '../models/Modules/BroadcastGroup.js';
-import { Employee } from '../models/Modules/Employee.js';
+import { prisma } from '../src/config/db.js';
 
 // --- Salary ---
 export const getSalaryHistory = async (req: Request, res: Response) => {
     try {
-        const employeeId = (req.user as any)?.id || (req.user as any)?.userId;
-        const history = await SalaryRecord.find({ employeeId }).sort({ paymentDate: -1 });
+        const employeeId = String((req.user as any)?.id || (req.user as any)?.userId);
+        const history = await prisma.salaryRecord.findMany({
+            where: { employeeId },
+            orderBy: { paymentDate: 'desc' }
+        });
         res.json(history);
     } catch (error: any) {
         res.status(500).json({ message: 'Error fetching salary history' });
@@ -20,8 +18,11 @@ export const getSalaryHistory = async (req: Request, res: Response) => {
 // --- Leaves ---
 export const getLeaveHistory = async (req: Request, res: Response) => {
     try {
-        const employeeId = (req.user as any)?.id || (req.user as any)?.userId;
-        const leaves = await LeaveRequest.find({ employeeId }).sort({ createdAt: -1 });
+        const employeeId = String((req.user as any)?.id || (req.user as any)?.userId);
+        const leaves = await prisma.leaveRequest.findMany({
+            where: { employeeId },
+            orderBy: { createdAt: 'desc' }
+        });
         res.json(leaves);
     } catch (error: any) {
         res.status(500).json({ message: 'Error fetching leave history' });
@@ -30,21 +31,22 @@ export const getLeaveHistory = async (req: Request, res: Response) => {
 
 export const applyForLeave = async (req: Request, res: Response) => {
     try {
-        const employeeId = (req.user as any)?.id || (req.user as any)?.userId;
-        const companyId = (req.user as any)?.companyId;
+        const employeeId = String((req.user as any)?.id || (req.user as any)?.userId);
+        const companyId = String((req.user as any)?.companyId);
         const { type, startDate, endDate, reason } = req.body;
 
-        const newLeave = new LeaveRequest({
-            companyId,
-            employeeId,
-            type,
-            startDate,
-            endDate,
-            reason,
-            status: 'Pending'
+        const newLeave = await prisma.leaveRequest.create({
+            data: {
+                companyId,
+                employeeId,
+                type,
+                startDate: new Date(startDate),
+                endDate: new Date(endDate),
+                reason,
+                status: 'Pending'
+            }
         });
 
-        await newLeave.save();
         res.status(201).json(newLeave);
     } catch (error: any) {
         res.status(500).json({ message: 'Error applying for leave' });
@@ -54,23 +56,36 @@ export const applyForLeave = async (req: Request, res: Response) => {
 // --- Calendar ---
 export const getEmployeeCalendar = async (req: Request, res: Response) => {
     try {
-        const employeeId = (req.user as any)?.id || (req.user as any)?.userId;
-        const companyId = (req.user as any)?.companyId;
+        const employeeId = String((req.user as any)?.id || (req.user as any)?.userId);
+        const companyId = String((req.user as any)?.companyId);
 
         // Fetch employee to get category
-        const employee = await Employee.findById(employeeId);
+        const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
         if (!employee) return res.status(404).json({ message: 'Employee not found' });
         const myCategory = employee.category || 'General';
 
-        const events = await CalendarEvent.find({
-            companyId,
-            $or: [
-                { visibility: 'public' },
-                { visibility: 'category', targetCategories: myCategory },
-                { attendees: employee.email } // Or ID if attendees stores IDs
-            ],
-            isDeleted: false
-        }).sort({ start: 1 });
+        // Prisma Json filtering is complex for "targetCategories contains myCategory", so we get public + email targeted natively,
+        // and filter category manually if needed.
+        // Actually since targetCategories is a Json array, we can use `array_contains` if using MySQL 5.7+ JSON methods,
+        // but Prisma standard querying uses `string_contains` inside arrays with Postgres, but MySQL JSON needs raw or specific syntax.
+        // Easiest is to fetch public & employee-specific natively, then in-memory filter if needed, OR we fetch all for company and filter.
+
+        const events = await prisma.calendarEvent.findMany({
+            where: {
+                companyId,
+                isDeleted: false
+            },
+            orderBy: { start: 'asc' }
+        });
+
+        const filteredEvents = events.filter(e => {
+            if (e.visibility === 'public') return true;
+            if (e.visibility === 'category' && Array.isArray(e.targetCategories) && e.targetCategories.includes(myCategory)) return true;
+            if (Array.isArray(e.attendees) && e.attendees.includes(employee.email)) return true;
+            return false;
+        });
+
+        res.json(filteredEvents);
 
         res.json(events);
     } catch (error: any) {
@@ -81,28 +96,33 @@ export const getEmployeeCalendar = async (req: Request, res: Response) => {
 // --- Broadcasts ---
 export const getEmployeeBroadcasts = async (req: Request, res: Response) => {
     try {
-        const employeeId = (req.user as any)?.id || (req.user as any)?.userId;
-        const companyId = (req.user as any)?.companyId;
+        const employeeId = String((req.user as any)?.id || (req.user as any)?.userId);
+        const companyId = String((req.user as any)?.companyId);
 
         // 1. Find groups I belong to
-        const myGroups = await BroadcastGroup.find({
-            companyId,
-            members: employeeId
-        }).select('_id');
+        const myGroupMemberships = await prisma.broadcastGroupMember.findMany({
+            where: {
+                employeeId,
+                group: { companyId }
+            },
+            select: { groupId: true }
+        });
 
-        const groupIds = myGroups.map(g => g._id);
+        const groupIds = myGroupMemberships.map(g => g.groupId);
 
         // 2. Find messages: Target All OR Target My Groups
-        const messages = await BroadcastMessage.find({
-            companyId,
-            $or: [
-                { targetAll: true },
-                { groupId: { $in: groupIds } }
-            ]
-        })
-            .sort({ createdAt: -1 })
-            .populate('senderId', 'fullName')
-            .limit(50); // Limit to last 50 messages
+        const messages = await prisma.broadcastMessage.findMany({
+            where: {
+                companyId,
+                OR: [
+                    { targetAll: true },
+                    { groupId: { in: groupIds } }
+                ]
+            },
+            orderBy: { createdAt: 'desc' },
+            include: { sender: { select: { fullName: true } } },
+            take: 50
+        });
 
         res.json(messages);
     } catch (error: any) {
@@ -115,8 +135,8 @@ export const getEmployeeBroadcasts = async (req: Request, res: Response) => {
 export const submitWorkReport = async (req: Request, res: Response) => {
     try {
         const { tasksCompleted, issues, nextDayPlan } = req.body;
-        const employeeId = (req.user as any)?.id || (req.user as any)?.userId;
-        const companyId = (req.user as any)?.companyId;
+        const employeeId = String((req.user as any)?.id || (req.user as any)?.userId);
+        const companyId = String((req.user as any)?.companyId);
 
         // Check if report already exists for today
         const startOfDay = new Date();
@@ -124,26 +144,30 @@ export const submitWorkReport = async (req: Request, res: Response) => {
         const endOfDay = new Date();
         endOfDay.setHours(23, 59, 59, 999);
 
-        const WorkReport = (await import('../models/Modules/WorkReport.js') as any).WorkReport || (await import('../models/Modules/WorkReport.js') as any).default;
-
-        const existingReport = await WorkReport.findOne({
-            employee: employeeId,
-            createdAt: { $gte: startOfDay, $lte: endOfDay }
+        const existingReport = await prisma.workReport.findFirst({
+            where: {
+                employeeId,
+                createdAt: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                }
+            }
         });
 
         if (existingReport) {
             return res.status(400).json({ message: 'Report for today already submitted.' });
         }
 
-        const report = new WorkReport({
-            employee: employeeId,
-            company: companyId,
-            tasksCompleted,
-            issues,
-            nextDayPlan
+        const report = await prisma.workReport.create({
+            data: {
+                employeeId,
+                companyId,
+                tasksCompleted,
+                issues,
+                nextDayPlan
+            }
         });
 
-        await report.save();
         res.status(201).json(report);
 
     } catch (error: any) {

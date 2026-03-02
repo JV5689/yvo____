@@ -1,770 +1,439 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Save, Download, Trash2, Printer, Search, Lock, Unlock, ChevronUp, ChevronDown, Users } from 'lucide-react';
+import { Plus, Save, Download, Trash2, Printer, Search, Lock, Unlock, ChevronUp, ChevronDown, Users, Layout, Settings, Type, Image, FileText, ZoomIn, ZoomOut, MousePointer2 } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useUI } from '../../context/UIContext';
 import api from '../../services/api';
 import InvoiceRenderer from '../../components/invoice-builder/InvoiceRenderer';
+import toast from 'react-hot-toast';
+import html2pdf from 'html2pdf.js';
 
-export default function InvoiceBuilder({ invoiceId: propId, onClose }) {
+export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditing = false }) {
     const navigate = useNavigate();
     const { id: paramId } = useParams();
     const { alert, confirm, prompt } = useUI();
     const [searchParams] = useSearchParams();
     const templateIdFromUrl = searchParams.get('templateId');
-    const id = propId || paramId; // Use prop if available (Drawer), else param
+    const id = propId || paramId;
 
-    const [inventory, setInventory] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState(!id);
-    const [securityPassword, setSecurityPassword] = useState('');
+    const [isEditing, setIsEditing] = useState(startEditing || !id);
     const [companyConfig, setCompanyConfig] = useState(null);
     const [templates, setTemplates] = useState([]);
     const [customers, setCustomers] = useState([]);
-    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [inventory, setInventory] = useState([]);
+
     const [showCustomerModal, setShowCustomerModal] = useState(false);
-    const [templateName, setTemplateName] = useState('');
     const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', address: '', taxId: '' });
 
-    // Tax Rate State (Default 10%)
-    const [taxRate, setTaxRate] = useState(10);
-    const [activeLayout, setActiveLayout] = useState(null); // The loaded template's layout array
-    const [zoom, setZoom] = useState(0.8); // Default zoom level for preview
-
-    const [newAttributeKey, setNewAttributeKey] = useState('');
-    const [newAttributeValue, setNewAttributeValue] = useState('');
+    const [activeLayout, setActiveLayout] = useState([]);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [zoom, setZoom] = useState(0.8);
+    const [sidebarTab, setSidebarTab] = useState('elements'); // 'elements', 'settings', 'data'
 
     const [invoiceData, setInvoiceData] = useState({
         invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+        customerId: '',
         customerName: '',
         clientAddress: '',
         gstNumber: '',
         date: new Date().toISOString().slice(0, 10),
         items: [],
         status: 'DRAFT',
-        taxRate: 10, // Store tax rate in invoice data too if possible, but localized state for now
+        taxRate: 10,
         customAttributes: []
     });
 
-    useEffect(() => {
-        fetchInventory();
-        fetchConfig();
-        fetchTemplates();
-        fetchCustomers();
-        if (id) fetchInvoice(id);
-    }, [id]);
+    const canvasRef = useRef(null);
 
-    const fetchCustomers = async () => {
+    const handleDownloadPDF = useCallback(async () => {
+        const el = canvasRef.current;
+        if (!el) return toast.error('Canvas not ready');
         try {
-            const companyId = localStorage.getItem('companyId');
-            const res = await api.get('/customers', { params: { companyId } });
-            setCustomers(res.data);
+            toast.loading('Generating PDF...', { id: 'pdf-gen' });
+            await html2pdf().set({
+                margin: 0,
+                filename: `Invoice-${invoiceData.invoiceNumber || 'draft'}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(el).save();
+            toast.success('PDF downloaded!', { id: 'pdf-gen' });
         } catch (e) {
-            console.error("Failed to fetch customers");
+            toast.error('Failed to generate PDF', { id: 'pdf-gen' });
         }
-    };
+    }, [invoiceData.invoiceNumber]);
 
-    // Handle templateId from URL to auto-load template
-    useEffect(() => {
-        if (!id && templateIdFromUrl && templates.length > 0) {
-            loadTemplate(templateIdFromUrl);
-        }
-    }, [templates, templateIdFromUrl, id]);
-
-    const fetchTemplates = async () => {
-        try {
-            const companyId = localStorage.getItem('companyId');
-            const res = await api.get('/invoice-templates', { params: { companyId } });
-            setTemplates(res.data);
-        } catch (e) {
-            console.error("Failed to fetch templates");
-        }
-    };
-
-    const fetchConfig = async () => {
-        try {
-            const companyId = localStorage.getItem('companyId');
-            const res = await api.get(`/company/config`);
-            setCompanyConfig(res.data.company);
-        } catch (e) { }
-    };
-
-    const fetchInvoice = async (invoiceId) => {
-        try {
-            const res = await api.get(`/invoices/${invoiceId}`);
-            setInvoiceData(res.data);
-
-            if (res.data.taxRate !== undefined) {
-                setTaxRate(res.data.taxRate);
-            }
-            setIsEditing(false);
-            setZoom(1.0); // Better zoom for view-only mode since sidebar is hidden
-            setLoading(false);
-        } catch (err) {
-            console.error("Failed to load invoice");
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (!activeLayout && templates.length > 0) {
-            if (id && !isEditing) {
-                if (invoiceData.layout && invoiceData.layout.length > 0) {
-                    setActiveLayout(invoiceData.layout);
-                } else if (invoiceData.templateId) {
-                    const template = templates.find(t => t._id === invoiceData.templateId);
-                    if (template) setActiveLayout(template.layout);
-                } else {
-                    // Fallback to first template for viewing if nothing else
-                    setActiveLayout(templates[0].layout);
-                }
-            } else if (!id) {
-                // For new invoices, use first template as base design
-                setActiveLayout(templates[0].layout);
-            }
-        }
-    }, [templates, invoiceData, activeLayout, isEditing, id]);
-
-    useEffect(() => {
-        if (isEditing) {
-            setZoom(0.8); // Scale down to fit sidebar
-        } else if (id) {
-            setZoom(1.0); // Scale up to fill centered space
-        }
-    }, [isEditing, id]);
-
-    const handleUnlockEdit = async () => {
-        const inputPass = await prompt(
-            "Security Authorization",
-            "Enter Invoice Security Password to Edit:",
-            "password",
-            "Unlock Editor",
-            "primary"
-        );
-        if (!inputPass) return;
-
-        try {
-            const companyId = localStorage.getItem('companyId');
-            const res = await api.post('/company/verify-password', { password: inputPass, companyId });
-            if (res.data.valid) {
-                setIsEditing(true);
-            } else {
-                alert("Security Error", "Incorrect security password provided. Access denied.", "error");
-            }
-        } catch (err) {
-            console.error(err);
-            alert("System Error", "Verification service is temporarily unavailable.", "error");
-        }
-    };
-
-    const fetchInventory = async () => {
-        try {
-            const companyId = localStorage.getItem('companyId');
-            const res = await api.get('/inventory', { params: { companyId } });
-            setInventory(res.data);
-            setLoading(false);
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    const addItem = () => {
-        setInvoiceData(prev => ({
-            ...prev,
-            items: [...prev.items, { inventoryId: '', description: '', quantity: 1, price: 0, total: 0 }]
-        }));
-    };
-
-    const updateItem = (index, field, value) => {
-        const newItems = [...invoiceData.items];
-        newItems[index][field] = value;
-
-        if (field === 'inventoryId') {
-            const product = inventory.find(i => i._id === value);
-            if (product) {
-                newItems[index].description = product.name;
-                newItems[index].price = product.sellingPrice;
-                newItems[index].inventoryId = product._id;
-            }
-        }
-
-        const qty = parseFloat(newItems[index].quantity) || 0;
-        const prc = parseFloat(newItems[index].price) || 0;
-        newItems[index].total = qty * prc;
-
-        setInvoiceData({ ...invoiceData, items: newItems });
-    };
-
-    const removeItem = (index) => {
-        const newItems = invoiceData.items.filter((_, i) => i !== index);
-        setInvoiceData({ ...invoiceData, items: newItems });
-    };
-
-    const handlePrint = () => {
-        window.print();
-    };
-
-    // Determine dynamic columns based on the loaded template layout
-    const itemsTableBlock = activeLayout?.find(b => b.type === 'ITEMS_TABLE');
-    const tableColumns = itemsTableBlock?.config?.columns || [
-        { id: 'col_desc', key: 'description', label: 'Item Description', align: 'left' },
-        { id: 'col_qty', key: 'quantity', label: 'Qty', align: 'center' },
-        { id: 'col_price', key: 'price', label: 'Price', align: 'right', isCurrency: true },
-        { id: 'col_total', key: 'total', label: 'Total', align: 'right', isCurrency: true }
+    const DEFAULT_LAYOUT = [
+        { id: 'b0', type: 'COMPANY_NAME', config: { x: 40, y: 60, width: 300, height: 40, fontSize: 24, fontWeight: 'bold' } },
+        { id: 'b1', type: 'COMPANY_DETAILS', config: { x: 40, y: 100, width: 300, height: 80, fontSize: 12 } },
+        { id: 'b2', type: 'CUSTOMER_DETAILS', config: { x: 40, y: 300, width: 300, height: 120, fontSize: 13 } },
+        { id: 'b3', type: 'INVOICE_DETAILS', config: { x: 500, y: 60, width: 250, height: 100, fontSize: 12, textAlign: 'right' } },
+        { id: 'b4', type: 'ITEMS_TABLE', config: { x: 40, y: 450, width: 710, height: 300 } },
+        { id: 'b5', type: 'TOTALS', config: { x: 500, y: 760, width: 250, height: 150 } },
+        { id: 'b6', type: 'CUSTOM_ATTRIBUTES', config: { x: 40, y: 760, width: 440, height: 150 } }
     ];
 
-
-
-    const calculateSubtotal = () => invoiceData.items.reduce((sum, item) => sum + item.total, 0);
-    const tax = calculateSubtotal() * (taxRate / 100);
-    const total = calculateSubtotal() + tax;
-
-    // Helper to check if a block type exists in current layout
-    const isBlockPresent = (types) => {
-        if (!activeLayout) return true; // Show all if no layout loaded yet (classic mode)
-        const typeList = Array.isArray(types) ? types : [types];
-        return activeLayout.some(block => typeList.includes(block.type));
-    };
-
-    const addCustomAttribute = async () => {
-        if (!newAttributeKey || !newAttributeValue) return;
-
-        const existingKeys = companyConfig?.invoiceAttributes || [];
-        if (!existingKeys.includes(newAttributeKey)) {
+    useEffect(() => {
+        const fetchData = async () => {
             try {
                 const companyId = localStorage.getItem('companyId');
-                const res = await api.post('/company/invoice-attributes', { companyId, attribute: newAttributeKey });
-                setCompanyConfig(prev => ({
-                    ...prev,
-                    invoiceAttributes: res.data.invoiceAttributes
-                }));
+                const [configRes, templatesRes, customersRes, inventoryRes] = await Promise.all([
+                    api.get('/company/config'),
+                    api.get('/invoice-templates', { params: { companyId } }),
+                    api.get('/customers', { params: { companyId } }),
+                    api.get('/inventory', { params: { companyId } })
+                ]);
+
+                setCompanyConfig(configRes.data.company);
+                setTemplates(templatesRes.data);
+                setCustomers(customersRes.data);
+                setInventory(inventoryRes.data);
+
+                if (id) {
+                    const invRes = await api.get(`/invoices/${id}`);
+                    const data = invRes.data;
+                    // Strip Prisma-only fields from items so editing works cleanly
+                    const cleanedItems = (data.items || []).map(({ id: _id, invoiceId: _inv, customFields: _cf, invoice: _i, inventory: _inv2, ...rest }) => rest);
+                    setInvoiceData({ ...data, items: cleanedItems });
+                    if (data.layout) setActiveLayout(data.layout);
+                    if (data.templateId) setSelectedTemplateId(data.templateId);
+                    // Don't override startEditing prop here
+                } else if (templateIdFromUrl) {
+                    const temp = templatesRes.data.find(t => (t.id || t._id) === templateIdFromUrl);
+                    if (temp) {
+                        setActiveLayout(temp.layout);
+                        setSelectedTemplateId(temp.id || temp._id);
+                    } else {
+                        setActiveLayout(DEFAULT_LAYOUT);
+                    }
+                } else if (templatesRes.data.length > 0) {
+                    setActiveLayout(templatesRes.data[0].layout);
+                    setSelectedTemplateId(templatesRes.data[0].id || templatesRes.data[0]._id);
+                } else {
+                    setActiveLayout(DEFAULT_LAYOUT);
+                }
+
+                setLoading(false);
             } catch (err) {
-                console.error("Failed to save new attribute to company", err);
+                console.error(err);
+                setLoading(false);
             }
-        }
+        };
+        fetchData();
+    }, [id, templateIdFromUrl]);
 
-        setInvoiceData(prev => ({
-            ...prev,
-            customAttributes: [...(prev.customAttributes || []), { key: newAttributeKey, value: newAttributeValue }]
-        }));
-        setNewAttributeKey('');
-        setNewAttributeValue('');
-    };
+    const handleUpdateData = useCallback((field, value) => {
+        setInvoiceData(prev => ({ ...prev, [field]: value }));
+    }, []);
 
-    const handleQuickCreateCustomer = async () => {
-        if (!newCustomer.name || !newCustomer.phone) {
-            alert("Error", "Name and Phone are required to create a customer.", "error");
-            return;
-        }
-        try {
-            const companyId = localStorage.getItem('companyId');
-            const res = await api.post('/customers', { companyId, ...newCustomer });
-            const created = res.data;
-            setCustomers([...customers, created]);
-            setInvoiceData({
-                ...invoiceData,
-                customerId: created._id,
-                customerName: created.name,
-                clientAddress: created.address || '',
-                gstNumber: created.taxId || ''
-            });
-            setShowCustomerModal(false);
-            setNewCustomer({ name: '', phone: '', address: '', taxId: '' });
-            alert("Success", "Customer created successfully and applied to invoice!", "success");
-        } catch (err) {
-            alert("Error", err.response?.data?.message || err.message, "error");
-        }
-    };
+    const handleUpdateConfig = useCallback((blockId, key, value) => {
+        setActiveLayout(prev => prev.map(b => b.id === blockId ? { ...b, config: { ...b.config, [key]: value } } : b));
+    }, []);
+
+    const calculateSubtotal = () => (invoiceData.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
+    const tax = calculateSubtotal() * (invoiceData.taxRate / 100);
+    const total = calculateSubtotal() + tax;
 
     const handleSave = async (status = 'DRAFT') => {
         try {
+            if (!invoiceData.customerId) {
+                return toast.error("Please select a customer first");
+            }
+
             const companyId = localStorage.getItem('companyId');
             const payload = {
                 ...invoiceData,
-                items: invoiceData.items.map(i => ({
-                    ...i,
-                    quantity: parseFloat(i.quantity) || 0,
-                    price: parseFloat(i.price) || 0,
-                    total: parseFloat(i.total) || 0
-                })),
                 companyId,
                 status,
                 grandTotal: total,
-                taxRate: parseFloat(taxRate) || 0,
-                layout: activeLayout || [],
-                templateId: templates.find(t => JSON.stringify(t.layout) === JSON.stringify(activeLayout))?._id || invoiceData.templateId
+                layout: activeLayout
             };
+
+            // Double check attributes are formatted correctly
+            if (!Array.isArray(payload.customAttributes)) payload.customAttributes = [];
 
             if (id) {
-                await api.patch(`/invoices/${id}`, payload); // Update using PATCH
+                await api.patch(`/invoices/${id}`, payload);
             } else {
-                await api.post('/invoices', payload); // Create new
+                await api.post('/invoices', payload);
             }
 
-            await alert("Invoice Created", `Invoice ${status === 'DRAFT' ? 'saved' : 'created'} successfully!`, "success");
-            if (onClose) {
-                onClose(); // Close drawer if applicable
-                window.location.reload(); // Refresh to show updates (simple fix)
-            } else {
-                navigate('/dashboard/finance');
-            }
+            toast.success(`Invoice ${status === 'DRAFT' ? 'saved' : 'issued'} successfully!`);
+            if (onClose) onClose();
+            else navigate('/dashboard/invoices');
         } catch (err) {
-            console.error(err);
-            alert("Save Failed", (err.response?.data?.message || err.message), "error");
+            console.error("Save Error:", err);
+            alert("Save Failed", err.response?.data?.message || err.message, "error");
         }
     };
 
-    const handleSaveAsTemplate = async () => {
-        if (!templateName) {
-            alert("Template Error", "Please enter a valid name for this template.", "error");
-            return;
-        }
-        try {
-            const companyId = localStorage.getItem('companyId');
-            const payload = {
-                companyId,
-                name: templateName,
-                type: 'COMPANY',
-                items: invoiceData.items.map(i => ({ ...i })), // Preserving all custom column values
-                taxRate,
-                layout: activeLayout // Saving the custom design
-            };
-            await api.post('/invoice-templates', payload);
-            alert("Template Saved", "This invoice structure has been saved to your company templates.", "success");
-            setShowTemplateModal(false);
-            setTemplateName('');
-            fetchTemplates();
-        } catch (err) {
-            console.error(err);
-            alert("Template Save Failed", (err.response?.data?.message || err.message), "error");
-        }
-    };
-
-    const loadTemplate = (templateId) => {
-        if (!templateId) return;
-        const template = templates.find(t => t._id === templateId);
-        if (template) {
-            setInvoiceData(prev => ({
-                ...prev,
-                items: template.items && template.items.length > 0 ? template.items.map(i => ({ ...i, inventoryId: '' })) : prev.items
-            }));
-            setTaxRate(template.taxRate !== undefined ? template.taxRate : 10);
-            setActiveLayout(template.layout && template.layout.length > 0 ? template.layout : null);
-        }
-    };
-
-
+    if (loading) return <div className="flex h-full items-center justify-center">Loading Invoice Builder...</div>;
 
     return (
-        <div className="flex flex-col lg:flex-row w-full h-[calc(90vh-70px)] overflow-hidden bg-slate-50 relative rounded-b-2xl">
-            {/* EDITOR SIDEBAR (Hidden in View Mode or when printing) */}
-            {(isEditing || !id) && (
-                <div className="w-full lg:w-1/3 bg-white border border-slate-200 rounded-xl p-6 overflow-y-auto print:hidden">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold text-slate-800">Invoice Settings</h2>
-                        {isEditing && (
-                            <span className="text-green-600 flex items-center gap-1 text-xs font-medium bg-green-50 px-2 py-1 rounded">
-                                <Unlock size={14} /> Editing Mode
-                            </span>
-                        )}
+        <div className="flex flex-col h-[calc(100vh-140px)] bg-slate-100 overflow-hidden rounded-b-2xl">
+            {/* Top Toolbar */}
+            <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30 shadow-sm">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                        <button onClick={() => setZoom(prev => Math.max(0.3, prev - 0.1))} className="p-1.5 hover:bg-slate-200 rounded transition-colors"><ZoomOut size={16} className="text-slate-600" /></button>
+                        <span className="text-xs font-bold text-slate-700 w-12 text-center">{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => setZoom(prev => Math.min(1.5, prev + 0.1))} className="p-1.5 hover:bg-slate-200 rounded transition-colors"><ZoomIn size={16} className="text-slate-600" /></button>
                     </div>
 
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Load from Template</label>
+                    <div className="h-6 w-px bg-slate-200"></div>
+
+                    <div className="flex items-center gap-3">
+                        <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Active Template</label>
                         <select
-                            className="w-full p-2 border rounded"
-                            onChange={(e) => loadTemplate(e.target.value)}
-                            disabled={!isEditing}
+                            className="bg-slate-50 text-slate-900 text-xs font-bold px-3 py-1.5 rounded border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={selectedTemplateId}
+                            onChange={(e) => {
+                                const t = templates.find(temp => (temp.id || temp._id) === e.target.value);
+                                if (t) {
+                                    setActiveLayout(t.layout || []);
+                                    setSelectedTemplateId(t.id || t._id);
+                                    handleUpdateData('templateId', t.id || t._id);
+
+                                    if (!id) {
+                                        setInvoiceData(prev => ({
+                                            ...prev,
+                                            taxRate: t.taxRate !== undefined ? t.taxRate : 10,
+                                            notes: t.notes || prev.notes,
+                                            items: t.items?.length > 0 ? t.items.map(item => ({ ...item })) : [],
+                                            customAttributes: t.layout?.find(b => b.type === 'CUSTOM_ATTRIBUTES')?.config?.attributes || []
+                                        }));
+                                    }
+                                }
+                            }}
                         >
-                            <option value="">-- Select a Template --</option>
-                            {templates.map(t => (
-                                <option key={t._id} value={t._id}>{t.name} {t.type === 'GLOBAL' ? '(Global)' : ''}</option>
-                            ))}
+                            <option value="">Select Template...</option>
+                            {templates.map(t => <option key={t.id || t._id} value={t.id || t._id}>{t.name || '(Unnamed Template)'}</option>)}
                         </select>
                     </div>
+                </div>
 
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Invoice Number</label>
-                            <input
-                                type="text"
-                                className="w-full p-2 border rounded"
-                                value={invoiceData.invoiceNumber}
-                                onChange={e => setInvoiceData({ ...invoiceData, invoiceNumber: e.target.value })}
-                                disabled={!isEditing}
-                            />
-                        </div>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleDownloadPDF}
+                        className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-all active:scale-95"
+                    >
+                        <Download size={16} /> Download PDF
+                    </button>
+                    {!isEditing && id ? (
+                        <button
+                            onClick={async () => {
+                                const inputPass = await prompt(
+                                    'Security Authorization',
+                                    'Enter Security Password to Edit Invoice:',
+                                    'password',
+                                    'Verify Password',
+                                    'primary'
+                                );
+                                if (!inputPass) return;
+                                try {
+                                    const companyId = localStorage.getItem('companyId');
+                                    const res = await api.post('/company/verify-password', { password: inputPass, companyId });
+                                    if (!res.data.valid) {
+                                        await alert('Access Denied', 'Incorrect Password! You cannot edit this invoice.', 'error');
+                                        return;
+                                    }
+                                    setIsEditing(true);
+                                } catch (err) {
+                                    await alert('Error', 'Password verification failed.', 'error');
+                                }
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95"
+                        >
+                            <Unlock size={16} /> Edit Mode
+                        </button>
+                    ) : (
+                        <>
+                            <button onClick={() => handleSave('DRAFT')} className="px-4 py-2 text-slate-500 text-sm font-bold hover:text-indigo-600 transition-colors">Save Draft</button>
+                            <button onClick={() => handleSave('ISSUED')} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-black uppercase tracking-wider hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95">
+                                <Save size={18} /> Issue Invoice
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
 
-                        {isBlockPresent(['CUSTOMER_DETAILS', 'BILL_TO_BLOCK', 'BILL_TO_LABEL']) && (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1 flex justify-between">
-                                        Customer
-                                        {isEditing && (
-                                            <button
-                                                onClick={() => setShowCustomerModal(true)}
-                                                className="text-xs text-indigo-600 font-bold hover:underline"
-                                                type="button"
-                                            >
-                                                + New Customer
-                                            </button>
-                                        )}
-                                    </label>
-                                    <select
-                                        className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 bg-white"
-                                        value={invoiceData.customerId || ''}
-                                        onChange={e => {
-                                            const cust = customers.find(c => c._id === e.target.value);
-                                            if (cust) {
-                                                setInvoiceData({
-                                                    ...invoiceData,
-                                                    customerId: cust._id,
-                                                    customerName: cust.name,
-                                                    clientAddress: cust.address || '',
-                                                    gstNumber: cust.taxId || ''
-                                                });
-                                            } else {
-                                                setInvoiceData({ ...invoiceData, customerId: '', customerName: '' });
-                                            }
-                                        }}
-                                        disabled={!isEditing}
-                                    >
-                                        <option value="">Select a customer...</option>
-                                        {customers.map(c => (
-                                            <option key={c._id} value={c._id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                {invoiceData.customerId && (
-                                    <div className="space-y-4 mt-4 bg-slate-50 p-4 rounded border border-slate-200">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Invoice Label (Name)</label>
-                                            <input
-                                                type="text"
-                                                className="w-full p-2 border bg-white rounded"
-                                                value={invoiceData.customerName}
-                                                onChange={e => setInvoiceData({ ...invoiceData, customerName: e.target.value })}
-                                                disabled={!isEditing}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Client Address</label>
-                                            <textarea
-                                                className="w-full p-2 border bg-white rounded"
-                                                value={invoiceData.clientAddress}
-                                                onChange={e => setInvoiceData({ ...invoiceData, clientAddress: e.target.value })}
-                                                disabled={!isEditing}
-                                                rows={2}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">GST / Tax ID</label>
-                                            <input
-                                                type="text"
-                                                className="w-full p-2 border bg-white rounded"
-                                                value={invoiceData.gstNumber}
-                                                onChange={e => setInvoiceData({ ...invoiceData, gstNumber: e.target.value })}
-                                                disabled={!isEditing}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {/* GST RATIO CONFIG */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    className="w-full p-2 border rounded"
-                                    value={taxRate}
-                                    onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
-                                    disabled={!isEditing}
-                                />
-                                {isEditing && (
-                                    <button
-                                        onClick={() => setTaxRate(0)}
-                                        className="px-3 py-2 text-xs bg-red-50 text-red-600 rounded border border-red-200 hover:bg-red-100 whitespace-nowrap"
-                                    >
-                                        Remove Tax
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                            <input
-                                type="date"
-                                className="w-full p-2 border rounded"
-                                value={invoiceData.date}
-                                onChange={e => setInvoiceData({ ...invoiceData, date: e.target.value })}
-                            />
-                        </div>
-
-                        {isBlockPresent('CUSTOM_ATTRIBUTES') && (
-                            <div className="mt-6 border-t border-slate-200 pt-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-semibold text-slate-800">Custom Attributes</h3>
-                                </div>
-                                <div className="space-y-3 mb-4">
-                                    {invoiceData.customAttributes?.map((attr, index) => (
-                                        <div key={index} className="flex gap-2 items-center bg-slate-50 p-2 rounded">
-                                            <div className="flex-1 text-sm font-semibold text-slate-700">{attr.key}</div>
-                                            <div className="flex-1 text-sm text-slate-600">{attr.value}</div>
-                                            <button onClick={() => {
-                                                const newAttrs = [...(invoiceData.customAttributes || [])];
-                                                newAttrs.splice(index, 1);
-                                                setInvoiceData({ ...invoiceData, customAttributes: newAttrs });
-                                            }} className="text-red-500 hover:text-red-700">
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                {isEditing && (
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            list="company-attributes"
-                                            className="flex-1 p-2 border rounded text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
-                                            placeholder="Name (e.g. E-way Bill)"
-                                            value={newAttributeKey}
-                                            onChange={(e) => setNewAttributeKey(e.target.value)}
-                                        />
-                                        <datalist id="company-attributes">
-                                            {companyConfig?.invoiceAttributes?.map((attr, i) => (
-                                                <option key={i} value={attr} />
-                                            ))}
-                                        </datalist>
-                                        <input
-                                            type="text"
-                                            className="flex-1 p-2 border rounded text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
-                                            placeholder="Value"
-                                            value={newAttributeValue}
-                                            onChange={(e) => setNewAttributeValue(e.target.value)}
-                                        />
-                                        <button
-                                            onClick={addCustomAttribute}
-                                            className="p-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
-                                        >
-                                            <Plus size={18} />
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-
+            <div className="flex flex-1 overflow-hidden">
+                {/* Left Controls */}
+                <div className="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 z-20">
+                    <div className="flex border-b border-slate-200 bg-slate-50/50">
+                        <button onClick={() => setSidebarTab('elements')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${sidebarTab === 'elements' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-white' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}>Layout Elements</button>
+                        <button onClick={() => setSidebarTab('data')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${sidebarTab === 'data' ? 'text-indigo-600 border-b-2 border-indigo-600 bg-white' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}>Invoice Data</button>
                     </div>
 
-                    <div className="mt-8">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-slate-800">Items</h3>
-                            <button onClick={addItem} className="text-indigo-600 text-sm font-medium flex items-center gap-1 hover:underline">
-                                <Plus size={16} /> Add Item
-                            </button>
-                        </div>
+                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                        {sidebarTab === 'elements' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Structure</h4>
+                                    <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl text-[11px] text-indigo-700 leading-relaxed">
+                                        <strong>Real-time Designer:</strong> Most elements can be edited directly on the canvas. Drag blocks to reposition, or use the designer to modify the template.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                        <div className="space-y-4">
-                            {invoiceData.items.map((item, index) => (
-                                <div key={index} className="bg-slate-50 p-3 rounded-lg border border-slate-200 relative group">
-                                    <button
-                                        onClick={() => removeItem(index)}
-                                        className="absolute top-2 right-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                        {sidebarTab === 'data' && (
+                            <div className="space-y-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Client Selection</h4>
+                                        <div className="flex flex-col gap-2">
+                                            <select
+                                                className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                value={invoiceData.customerId || ''}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    const c = customers.find(cust => (cust.id === val || cust._id === val));
+                                                    if (c) {
+                                                        setInvoiceData(prev => ({
+                                                            ...prev,
+                                                            customerId: c.id || c._id,
+                                                            customerName: c.name,
+                                                            clientAddress: c.address
+                                                        }));
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">Select Existing Client...</option>
+                                                {customers.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
+                                            </select>
+                                            <button onClick={() => setShowCustomerModal(true)} className="w-full py-2.5 border border-dashed border-slate-300 text-slate-500 text-[10px] font-bold uppercase rounded-lg hover:border-indigo-500 hover:text-indigo-600 hover:bg-slate-50 transition-all">+ Quick Add Client</button>
+                                        </div>
+                                    </div>
 
-                                    <div className="mb-2">
-                                        <label className="text-xs text-slate-500 font-bold uppercase tracking-wider block mb-1">Select Product Base</label>
+                                    <div>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Add Products</h4>
                                         <select
-                                            className="w-full p-2 border border-slate-200 rounded text-sm bg-white"
-                                            value={item.inventoryId}
-                                            onChange={e => updateItem(index, 'inventoryId', e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 text-xs text-slate-900 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            onChange={(e) => {
+                                                const p = inventory.find(inv => inv.id === e.target.value);
+                                                if (p) {
+                                                    const newItem = { description: p.name, quantity: 1, price: p.sellingPrice, total: p.sellingPrice, inventoryId: p.id };
+                                                    handleUpdateData('items', [...(invoiceData.items || []), newItem]);
+                                                }
+                                            }}
                                         >
-                                            <option value="">Select from Inventory...</option>
-                                            {inventory.map(inv => (
-                                                <option key={inv._id} value={inv._id}>{inv.name} (₹{inv.sellingPrice})</option>
-                                            ))}
+                                            <option value="">Choose Inventory Item...</option>
+                                            {inventory.map(inv => <option key={inv.id} value={inv.id}>{inv.name} (₹{inv.sellingPrice})</option>)}
                                         </select>
                                     </div>
 
-                                    <div className="mt-3 bg-white border border-slate-100 p-2 rounded flex flex-wrap gap-3">
-                                        {tableColumns.map(col => {
-                                            if (col.key === 'total') {
-                                                return (
-                                                    <div key={col.id} className="flex-1 min-w-[80px]">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">{col.label}</label>
-                                                        <div className="text-sm font-bold pt-1 text-indigo-700 bg-indigo-50 px-2 py-1 rounded inline-block">
-                                                            {col.isCurrency ? '₹' : ''}{(item.total || 0).toFixed(2)}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
+                                    <div>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Invoice Configuration</h4>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Invoice Number</label>
+                                                <input type="text" className="w-full bg-slate-50 border border-slate-200 p-2.5 text-slate-900 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none" value={invoiceData.invoiceNumber} onChange={e => handleUpdateData('invoiceNumber', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5 ml-1">Invoice Date</label>
+                                                <input type="date" className="w-full bg-slate-50 border border-slate-200 p-2.5 text-slate-900 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-none" value={invoiceData.date} onChange={e => handleUpdateData('date', e.target.value)} />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                            return (
-                                                <div key={col.id} className={`flex-1 min-w-[${col.key === 'description' ? '120px' : '80px'}]`}>
-                                                    <label className="text-[10px] text-slate-700 font-bold uppercase tracking-wider block mb-0.5">{col.label}</label>
-                                                    <input
-                                                        type={col.key === 'quantity' || col.key === 'price' || col.isCurrency ? 'number' : 'text'}
-                                                        className="w-full p-1.5 border border-slate-200 rounded text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
-                                                        value={item[col.key] !== undefined ? item[col.key] : ''}
-                                                        placeholder={col.label}
-                                                        onChange={e => {
-                                                            const val = (col.key === 'quantity' || col.key === 'price' || col.isCurrency)
-                                                                ? (parseFloat(e.target.value) || 0)
-                                                                : e.target.value;
-                                                            updateItem(index, col.key, val);
-                                                        }}
-                                                    />
-                                                </div>
-                                            );
-                                        })}
+                                    <div>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Predefined Fields</h4>
+                                        <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                                            <p className="text-[10px] text-slate-500 italic leading-relaxed">
+                                                Custom fields (like Tax ID, Status, etc.) are defined in the <strong>Template Designer</strong>.
+                                                Fill their values directly on the invoice canvas.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            ))}
+                            </div>
+                        )
+                        }
+                    </div>
+
+                    <div className="p-6 bg-slate-50 border-t border-slate-200">
+                        <div className="flex flex-col gap-1.5 mb-4">
+                            <div className="flex justify-between text-xs text-slate-500 font-medium"><span>Subtotal</span><span>₹{calculateSubtotal().toFixed(2)}</span></div>
+                            <div className="flex justify-between text-xs text-slate-500 font-medium"><span>Tax ({invoiceData.taxRate}%)</span><span>₹{tax.toFixed(2)}</span></div>
                         </div>
-                    </div>
-
-                    <div className="mt-8 space-y-3 pt-6 border-t border-slate-200">
-                        {isEditing && (
-                            <button onClick={() => setShowTemplateModal(true)} className="w-full flex justify-center items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-indigo-600 font-medium hover:bg-indigo-50">
-                                <Save size={18} /> Save as Template
-                            </button>
-                        )}
-                        <button onClick={() => handleSave('DRAFT')} className="w-full flex justify-center items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg font-medium hover:bg-slate-50">
-                            <Save size={18} /> Save as Draft
-                        </button>
-                        <button onClick={() => handleSave('ISSUED')} className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 shadow-sm">
-                            <Save size={18} /> Issue Invoice
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Template Name Modal */}
-            {showTemplateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-                        <h2 className="text-lg font-bold mb-4">Save as Template</h2>
-                        <input
-                            type="text"
-                            className="w-full p-2 border rounded mb-4"
-                            placeholder="Template Name (e.g., Monthly Services)"
-                            value={templateName}
-                            onChange={(e) => setTemplateName(e.target.value)}
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                            <button onClick={handleSaveAsTemplate} className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
+                        <div className="h-px bg-slate-200 mb-4 opacity-50"></div>
+                        <div className="flex justify-between items-center text-slate-900 font-black text-xl">
+                            <span>TOTAL</span>
+                            <span className="text-indigo-600">₹{total.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
-            )}
+
+                {/* Canvas Workspace */}
+                <div className="flex-1 overflow-auto bg-slate-100/50 p-12 flex justify-center items-start relative custom-scrollbar">
+                    {/* Visual Backdrop Effects */}
+                    <div className="absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.05)_0,transparent_70%)]"></div>
+
+                    <div className="relative group/canvas" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+
+                        <div ref={canvasRef} className="shadow-[0_40px_120px_rgba(0,0,0,0.08)] transition-all duration-500 rounded-sm">
+                            <InvoiceRenderer
+                                editable={isEditing}
+                                layout={activeLayout}
+                                invoiceData={invoiceData}
+                                companyConfig={companyConfig}
+                                taxRate={invoiceData.taxRate}
+                                calculateSubtotal={calculateSubtotal}
+                                tax={tax}
+                                total={total}
+                                onUpdateData={handleUpdateData}
+                                onUpdateConfig={handleUpdateConfig}
+                                options={{ inventory }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {/* Quick Create Customer Modal */}
             {showCustomerModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
-                        <h2 className="text-lg font-bold mb-4 bg-slate-50 text-slate-800 p-2 rounded border border-slate-100 flex items-center gap-2">
-                            <Users size={18} className="text-indigo-600" />
-                            Quick Add Customer
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 text-slate-900">
+                    <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in duration-300 border border-white/20">
+                        <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-6 flex items-center gap-3">
+                            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                                <Users size={24} strokeWidth={2.5} />
+                            </div>
+                            New Client
                         </h2>
-                        <input
-                            type="text"
-                            required
-                            className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 mb-3"
-                            placeholder="Customer Name *"
-                            value={newCustomer.name}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                        />
-                        <input
-                            type="tel"
-                            required
-                            className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 mb-3"
-                            placeholder="Phone Number *"
-                            value={newCustomer.phone}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                        />
-                        <textarea
-                            className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 mb-3"
-                            placeholder="Client Address"
-                            rows={2}
-                            value={newCustomer.address}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
-                        />
-                        <input
-                            type="text"
-                            className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 mb-4"
-                            placeholder="GST / Tax ID"
-                            value={newCustomer.taxId}
-                            onChange={(e) => setNewCustomer({ ...newCustomer, taxId: e.target.value })}
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowCustomerModal(false)} className="px-4 py-2 font-medium text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
-                            <button onClick={handleQuickCreateCustomer} className="px-4 py-2 font-bold bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm transition">Save & Select</button>
+                        <div className="space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Business Name *</label>
+                                <input type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 text-slate-900 rounded-xl placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Phone Number *</label>
+                                <input type="tel" className="w-full bg-slate-50 border border-slate-200 p-3.5 text-slate-900 rounded-xl placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Business Address</label>
+                                <textarea className="w-full bg-slate-50 border border-slate-200 p-3.5 text-slate-900 rounded-xl placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" rows={2} value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
+                            <button onClick={() => setShowCustomerModal(false)} className="px-6 py-3 font-bold text-slate-400 hover:text-slate-600 transition-colors">Cancel</button>
+                            <button onClick={async () => {
+                                try {
+                                    const cid = localStorage.getItem('companyId');
+                                    const res = await api.post('/customers', { companyId: cid, ...newCustomer });
+                                    setCustomers([...customers, res.data]);
+                                    handleUpdateData('customerId', res.data.id || res.data._id);
+                                    handleUpdateData('customerName', res.data.name);
+                                    handleUpdateData('clientAddress', res.data.address);
+                                    setShowCustomerModal(false);
+                                    toast.success("Client added!");
+                                } catch (e) { toast.error("Failed to add client"); }
+                            }} className="px-10 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95">Add & Apply</button>
                         </div>
                     </div>
                 </div>
             )}
-
-            {/* PREVIEW AREA (The Paper Invoice) */}
-            <div className="flex-1 flex flex-col items-center justify-start bg-slate-100 p-8 overflow-y-auto print:bg-white print:p-0 relative">
-
-                {/* Header Action Portal (Moves Edit button to Modal Header) */}
-                {document.getElementById('modal-header-actions') && !isEditing && id && !loading && createPortal(
-                    <button
-                        onClick={handleUnlockEdit}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-sm hover:bg-indigo-700 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                        <Unlock size={16} /> <span className="text-xs font-black uppercase tracking-widest text-nowrap">Edit Invoice</span>
-                    </button>,
-                    document.getElementById('modal-header-actions')
-                )}
-
-                <div
-                    className="origin-top transition-transform duration-300 shadow-2xl"
-                    style={{ transform: `scale(${zoom})` }}
-                >
-                    <InvoiceRenderer
-                        layout={activeLayout}
-                        invoiceData={invoiceData}
-                        companyConfig={companyConfig}
-                        taxRate={taxRate}
-                        calculateSubtotal={calculateSubtotal}
-                        tax={tax}
-                        total={total}
-                    />
-                </div>
-
-                {/* FOOTER CONTROLS (Only in Edit Mode) */}
-                {isEditing && (
-                    <div className="mt-6 flex flex-wrap justify-center gap-4 print:hidden">
-                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm mr-4">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Preview Zoom</label>
-                            <input
-                                type="range"
-                                min="0.3"
-                                max="1.5"
-                                step="0.05"
-                                value={zoom}
-                                onChange={(e) => setZoom(parseFloat(e.target.value))}
-                                className="w-32 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                            />
-                            <span className="text-xs font-bold text-slate-600 w-10">{Math.round(zoom * 100)}%</span>
-                        </div>
-                        <button onClick={handlePrint} className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-full font-bold hover:bg-slate-800 shadow-xl shadow-slate-200 hover:shadow-2xl transition-all transform hover:-translate-y-0.5">
-                            <Printer size={18} /> Print Invoice
-                        </button>
-                        <button onClick={() => handleSave(invoiceData.status)} className="flex items-center gap-2 px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-full font-bold hover:bg-slate-50 shadow-sm transition-all">
-                            <Save size={18} /> Quick Save
-                        </button>
-                    </div>
-                )}
-            </div>
         </div>
     );
 }

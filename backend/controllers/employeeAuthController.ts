@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
 import { signToken } from '../src/utils/jwt.js';
 import bcrypt from 'bcryptjs';
-import { Employee } from '../models/Modules/Employee.js';
-import { Company } from '../models/Global/Company.js';
-import { Plan } from '../models/Global/Plan.js';
+import { prisma } from '../src/config/db.js';
 
 export const loginEmployee = async (req: Request, res: Response) => {
     try {
@@ -14,7 +12,10 @@ export const loginEmployee = async (req: Request, res: Response) => {
         const normalizedPhone = numericPhone.length > 10 ? numericPhone.slice(-10) : numericPhone;
 
         // Find employee by phone
-        const employee = await Employee.findOne({ phone: normalizedPhone }).populate('companyId', 'name logo');
+        const employee = await prisma.employee.findFirst({
+            where: { phone: normalizedPhone },
+            include: { company: true }
+        });
         if (!employee) {
             return res.status(401).json({ message: 'Invalid phone or password' });
         }
@@ -34,20 +35,24 @@ export const loginEmployee = async (req: Request, res: Response) => {
         }
 
         // Check if Company has Employee Module Enabled
-        const company = await Company.findById(employee.companyId as any).populate('planId');
+        const company = await prisma.company.findUnique({
+            where: { id: employee.companyId },
+            include: { plan: true }
+        });
+
         if (!company) {
             return res.status(404).json({ message: 'Company not found' });
         }
 
         // Calculate functionality access
-        const plan = await Plan.findById((company.planId as any)._id || company.planId);
+        const plan = company.plan;
         if (!plan) {
             return res.status(404).json({ message: 'Plan not found' });
         }
 
-        // Handle Mongoose Maps/Objects correctly
-        const planDefaults = plan.defaultFlags instanceof Map ? Object.fromEntries(plan.defaultFlags) : (plan.defaultFlags || {});
-        const companyOverrides = company.featureFlags instanceof Map ? Object.fromEntries(company.featureFlags) : (company.featureFlags || {});
+        // Handle features (stored as JSON in Prisma)
+        const planDefaults = (plan.defaultFlags as Record<string, boolean>) || {};
+        const companyOverrides = (company.featureFlags as Record<string, boolean>) || {};
 
         // Merge logic: Plan Defaults -> Company Overrides
         const effectiveFlags = { ...planDefaults, ...companyOverrides };
@@ -58,13 +63,13 @@ export const loginEmployee = async (req: Request, res: Response) => {
 
         // Generate Token
         const token = signToken(
-            { id: (employee._id as any).toString(), role: 'employee', companyId: (employee.companyId as any)._id?.toString() || employee.companyId?.toString() }
+            { id: String(employee.id), role: 'employee', companyId: String(employee.companyId) }
         );
 
         res.json({
             token,
             user: {
-                id: employee._id,
+                id: employee.id,
                 firstName: employee.firstName,
                 lastName: employee.lastName,
                 email: employee.email,
@@ -86,7 +91,10 @@ export const loginEmployee = async (req: Request, res: Response) => {
 export const getEmployeeProfile = async (req: Request, res: Response) => {
     try {
         const employeeId = req.user?.userId || (req.user as any)?.id; // From middleware
-        const employee = await Employee.findById(employeeId).populate('companyId', 'name logo');
+        const employee = await prisma.employee.findUnique({
+            where: { id: String(employeeId) },
+            include: { company: { select: { name: true, logo: true } } }
+        });
 
         if (!employee) {
             return res.status(404).json({ message: 'Employee not found' });

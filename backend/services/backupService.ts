@@ -2,49 +2,29 @@ import fs from 'fs';
 import path from 'path';
 import archiver from 'archiver';
 import { stringify } from 'csv-stringify/sync';
-import { BackupJob } from '../models/Global/BackupJob.js';
-import { Company } from '../models/Global/Company.js';
-import { User } from '../models/Global/User.js';
-import { Employee } from '../models/Modules/Employee.js';
-import { Invoice } from '../models/Modules/Invoice.js';
-import { Expense } from '../models/Modules/Expense.js';
-import { Customer } from '../models/Modules/Customer.js';
-import { InventoryItem } from '../models/Modules/InventoryItem.js';
-import { LeaveRequest } from '../models/Modules/LeaveRequest.js';
-import { SalaryRecord } from '../models/Modules/SalaryRecord.js';
-import { WorkReport } from '../models/Modules/WorkReport.js';
-import { CalendarEvent } from '../models/Modules/CalendarEvent.js';
-import { BroadcastGroup } from '../models/Modules/BroadcastGroup.js';
-import { BroadcastMessage } from '../models/Modules/BroadcastMessage.js';
-import { AuditLog } from '../models/Global/AuditLog.js';
+import { prisma } from '../src/config/db.js';
 
 const MODULE_MODELS: Record<string, any> = {
-    users: User,
-    employees: Employee,
-    invoices: Invoice,
-    expenses: Expense,
-    customers: Customer,
-    inventory: InventoryItem,
-    leaves: LeaveRequest,
-    payroll: SalaryRecord,
-    work_reports: WorkReport,
-    calendar: CalendarEvent,
-    broadcast_groups: BroadcastGroup,
-    broadcast_messages: BroadcastMessage
+    users: 'user',
+    employees: 'employee',
+    invoices: 'invoice',
+    expenses: 'expense',
+    customers: 'customer',
+    inventory: 'inventoryItem',
+    leaves: 'leaveRequest',
+    payroll: 'salaryRecord',
+    work_reports: 'workReport',
+    calendar: 'calendarEvent',
+    broadcast_groups: 'broadcastGroup',
+    broadcast_messages: 'broadcastMessage'
 };
 
 const SENSITIVE_FIELDS = ['password', 'passwordHash', 'refreshToken', 'googleId', 'apiKey'];
 const PII_FIELDS = ['email', 'phone', 'address', 'fullName', 'firstName', 'lastName'];
 
-const IDENTITY_FIELDS = [
-    'companyId', 'employeeId', 'customerId', 'userId', 'createdBy',
-    'employee', 'senderId', 'receiverId', 'inventoryId', 'actorId', 'targetId'
-];
-
 const formatValueForHuman = (key: string, value: any): any => {
     if (!value && value !== 0 && value !== false) return '';
 
-    // 1. Handle Dates
     if (value instanceof Date) {
         return value.toLocaleString();
     }
@@ -53,37 +33,28 @@ const formatValueForHuman = (key: string, value: any): any => {
         return isNaN(date.getTime()) ? value : date.toLocaleString();
     }
 
-    // 2. Handle Objects (populated or nested)
     if (typeof value === 'object' && !Array.isArray(value)) {
-        // If it's a populated object, look for any field that represents a "Name"
         const nameCandidates = [
             value.name,
             value.fullName,
             (value.firstName || value.lastName) ? `${value.firstName || ''} ${value.lastName || ''}`.trim() : null,
             value.title,
             value.sku ? `${value.sku} - ${value.name || ''}` : null,
-            value.email, // Last resort for users
-            value.backupId // For backup jobs
+            value.email,
+            value.backupId
         ];
 
         const winner = nameCandidates.find(c => c && typeof c === 'string');
         if (winner) return winner;
 
-        // Fallback for ObjectIDs that weren't populated or lack name fields
-        const strValue = String(value);
-        if (strValue !== '[object Object]') return strValue;
-
-        // Final fallback: JSON string
         return JSON.stringify(value);
     }
 
-    // 3. Handle Arrays
     if (Array.isArray(value)) {
         return value.map(item => {
             if (typeof item === 'object') {
-                // Special case: Invoice Items
                 if (item.inventoryId || item.description) {
-                    const desc = (formatValueForHuman('item', item.inventoryId) || item.description || 'Item').trim();
+                    const desc = (item.inventory?.name || item.description || 'Item').trim();
                     const qty = item.quantity || 0;
                     const price = item.price || 0;
                     const total = item.total || (qty * price);
@@ -99,20 +70,23 @@ const formatValueForHuman = (key: string, value: any): any => {
 };
 
 export const generateBackup = async (jobId: string) => {
-    const job = await BackupJob.findById(jobId) as any;
+    const job = await prisma.backupJob.findUnique({ where: { id: jobId } });
     if (!job) return;
 
-    const company = await Company.findById(job.companyId);
+    const company = await prisma.company.findUnique({ where: { id: job.companyId } });
     if (!company) {
-        job.status = 'FAILED';
-        job.error = 'Company not found';
-        await job.save();
+        await prisma.backupJob.update({
+            where: { id: jobId },
+            data: { status: 'FAILED', error: 'Company not found' }
+        });
         return;
     }
 
     try {
-        job.status = 'PROCESSING';
-        await job.save();
+        await prisma.backupJob.update({
+            where: { id: jobId },
+            data: { status: 'PROCESSING' }
+        });
 
         const timestamp = new Date().toISOString().split('T')[0];
         const fileName = `YVO_BACKUP_${company.name.replace(/\s+/g, '_')}_${timestamp}_${job.backupId}.zip`;
@@ -124,20 +98,25 @@ export const generateBackup = async (jobId: string) => {
         const archive = archiver('zip', { zlib: { level: 9 } });
 
         output.on('close', async () => {
-            job.status = 'READY';
-            job.progress = 100;
-            job.filePath = filePath;
-            job.fileSize = archive.pointer();
-            await job.save();
+            await prisma.backupJob.update({
+                where: { id: job.id },
+                data: {
+                    status: 'READY',
+                    progress: 100,
+                    filePath: filePath,
+                    fileSize: archive.pointer()
+                }
+            });
 
-            // Record in Audit Log
-            await AuditLog.create({
-                companyId: company._id,
-                actorId: job.createdBy,
-                action: 'BACKUP_READY',
-                targetId: job._id,
-                targetModel: 'BackupJob',
-                details: { backupId: job.backupId, size: job.fileSize }
+            await prisma.auditLog.create({
+                data: {
+                    companyId: company.id,
+                    actorId: String(job.createdBy) || 'system',
+                    action: 'BACKUP_READY',
+                    targetId: job.id,
+                    targetModel: 'BackupJob',
+                    details: { backupId: job.backupId, size: archive.pointer() }
+                }
             });
         });
 
@@ -147,95 +126,80 @@ export const generateBackup = async (jobId: string) => {
 
         archive.pipe(output);
 
-        // 1. Generate Manifest
         const manifest = {
             backupId: job.backupId,
-            companyId: company._id,
+            companyId: company.id,
             companyName: company.name,
             createdAt: job.createdAt || new Date(),
             createdBy: job.createdBy,
-            includedModules: job.filters?.modules,
-            includesFiles: job.filters?.includeFiles,
-            piiIncluded: job.filters?.includePII,
-            schemaVersion: '1.0.0'
+            includedModules: (job.filters as any)?.modules,
+            includesFiles: (job.filters as any)?.includeFiles,
+            piiIncluded: (job.filters as any)?.includePII,
+            schemaVersion: '2.0.0 (Prisma)'
         };
-        const readmeContent = `YVO Data Export - README
-
-Your company data has been exported in two formats:
-1. CSV Folder: Best for reading in Microsoft Excel, Google Sheets, or sharing with customers.
-2. JSON Folder: Technical data format for system restores.
-
-NOTES ON YOUR DATA:
-- DATES: All dates are formatted to your local timezone for easy reading.
-- NAMES: We have automatically replaced technical IDs (like '698da...') with actual Names (e.g., Company Name, Employee Name) wherever possible.
-- INVOICES: Item details are combined into a single easy-to-read column.
-
-        This backup is valid for 7 days from the creation date.
-        Generated on: ${new Date(job.createdAt || Date.now()).toLocaleString()}
-        `;
+        const readmeContent = `YVO Data Export - README\n\nYour company data exports.\n\nGenerated on: ${new Date(job.createdAt || Date.now()).toLocaleString()}`;
         archive.append(readmeContent, { name: 'README.txt' });
         archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest/manifest.json' });
 
-        // 2. Export Data
-        const modulesToExport = job.filters?.modules && job.filters.modules.length > 0
-            ? job.filters.modules
+        const modulesToExport = (job.filters as any)?.modules && (job.filters as any).modules.length > 0
+            ? (job.filters as any).modules
             : Object.keys(MODULE_MODELS);
 
         let processedModules = 0;
         const totalModules = modulesToExport.length;
+        const updatedRecordCounts: any = typeof job.recordCounts === 'object' && job.recordCounts !== null && !Array.isArray(job.recordCounts) ? { ...job.recordCounts } : {};
 
         for (const moduleName of modulesToExport) {
-            const Model = MODULE_MODELS[moduleName];
-            if (!Model) continue;
+            const modelDelegateString = MODULE_MODELS[moduleName];
+            if (!modelDelegateString) continue;
 
-            job.currentModule = moduleName;
-            job.progress = Math.round((processedModules / totalModules) * 100);
-            await job.save();
-
-            // Build query
-            const companyField = Model.schema.paths.companyId ? 'companyId' : 'company';
-            let query: any = { [companyField]: company._id };
-
-
-            // Apply Date Filters
-            if (job.filters?.dateRange?.start || job.filters?.dateRange?.end) {
-                const dateField = getDateFieldForModule(moduleName);
-                query[dateField] = {};
-                if (job.filters.dateRange.start) query[dateField].$gte = new Date(job.filters.dateRange.start);
-                if (job.filters.dateRange.end) query[dateField].$lte = new Date(job.filters.dateRange.end);
-            }
-
-            // Special handling for User model (filter by memberships)
-            if (moduleName === 'users') {
-                query = { 'memberships.companyId': company._id };
-            }
-
-            // Global Population: Find all identity fields that exist in this model's schema and have a ref
-            let mQuery = Model.find(query);
-            IDENTITY_FIELDS.forEach(field => {
-                const path = Model.schema.paths[field];
-                if (path && (path.options?.ref || path.instance === 'ObjectID')) {
-                    mQuery = mQuery.populate(field);
+            await prisma.backupJob.update({
+                where: { id: jobId },
+                data: {
+                    currentModule: moduleName,
+                    progress: Math.round((processedModules / totalModules) * 100)
                 }
             });
 
-            // Special case for nested paths (like invoice items)
-            if (moduleName === 'invoices') {
-                mQuery = mQuery.populate('items.inventoryId');
+            let query: any = { companyId: company.id };
+
+            if ((job.filters as any)?.dateRange?.start || (job.filters as any)?.dateRange?.end) {
+                const dateField = getDateFieldForModule(moduleName);
+                query[dateField] = {};
+                if ((job.filters as any).dateRange.start) query[dateField].gte = new Date((job.filters as any).dateRange.start);
+                if ((job.filters as any).dateRange.end) query[dateField].lte = new Date((job.filters as any).dateRange.end);
             }
 
-            const cursor = mQuery.cursor();
+            if (moduleName === 'users') {
+                query = { memberships: { some: { companyId: company.id } } };
+            }
+
+            let includeArgs: any = undefined;
+            if (moduleName === 'invoices') {
+                includeArgs = { customer: true, items: { include: { inventory: true } } };
+            } else if (moduleName === 'employees') {
+                includeArgs = { company: true };
+            } else if (moduleName === 'expenses' || moduleName === 'customers' || moduleName === 'inventory') {
+                includeArgs = { company: true };
+            } else if (moduleName === 'leaves' || moduleName === 'payroll' || moduleName === 'work_reports') {
+                includeArgs = { employee: true };
+            }
+
+            const modelDelegate = (prisma as any)[modelDelegateString];
+            const rawRecords = await modelDelegate.findMany({
+                where: query,
+                include: includeArgs
+            });
+
             const records: any[] = [];
             let count = 0;
 
-            for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
-                const data = doc.toObject();
+            for (const doc of rawRecords) {
+                const data = { ...doc };
 
-                // Remove sensitive fields
                 SENSITIVE_FIELDS.forEach(f => delete data[f]);
 
-                // Mask PII if not included
-                if (!job.filters?.includePII) {
+                if (!(job.filters as any)?.includePII) {
                     PII_FIELDS.forEach(f => {
                         if (data[f]) data[f] = maskPII(data[f], f);
                     });
@@ -246,10 +210,8 @@ NOTES ON YOUR DATA:
             }
 
             if (records.length > 0) {
-                // 1. Add JSON (Raw data for technical backup/restore)
                 archive.append(JSON.stringify(records, null, 2), { name: `data/${moduleName}/records.json` });
 
-                // 2. Prepare CSV (Human-friendly format)
                 const csvRecords = records.map(r => {
                     const humanRow: any = {};
                     for (const [key, value] of Object.entries(r)) {
@@ -258,12 +220,10 @@ NOTES ON YOUR DATA:
                     return humanRow;
                 });
 
-                // Add CSV
                 const csvData = stringify(csvRecords, { header: true });
                 archive.append(csvData, { name: `data/${moduleName}/records.csv` });
             }
 
-            // Add Summary
             const summary = {
                 module: moduleName,
                 recordCount: count,
@@ -271,12 +231,16 @@ NOTES ON YOUR DATA:
             };
             archive.append(JSON.stringify(summary, null, 2), { name: `data/${moduleName}/summary.json` });
 
-            job.recordCounts.set(moduleName, count);
+            updatedRecordCounts[moduleName] = count;
             processedModules++;
+
+            await prisma.backupJob.update({
+                where: { id: jobId },
+                data: { recordCounts: updatedRecordCounts }
+            });
         }
 
-        // 3. Add Files
-        if (job.filters?.includeFiles) {
+        if ((job.filters as any)?.includeFiles) {
             const filesIndex: any[] = [];
             archive.append(JSON.stringify(filesIndex, null, 2), { name: 'files/files_index.json' });
         }
@@ -285,17 +249,20 @@ NOTES ON YOUR DATA:
 
     } catch (error: any) {
         console.error("Backup generation failed:", error);
-        job.status = 'FAILED';
-        job.error = error.message;
-        await job.save();
+        await prisma.backupJob.update({
+            where: { id: jobId },
+            data: { status: 'FAILED', error: error.message }
+        });
 
-        await AuditLog.create({
-            companyId: company._id,
-            actorId: job.createdBy,
-            action: 'BACKUP_FAILED',
-            targetId: job._id,
-            targetModel: 'BackupJob',
-            details: { error: error.message }
+        await prisma.auditLog.create({
+            data: {
+                companyId: company.id,
+                actorId: String(job.createdBy) || 'system',
+                action: 'BACKUP_FAILED',
+                targetId: job.id,
+                targetModel: 'BackupJob',
+                details: { error: error.message }
+            }
         });
     }
 };

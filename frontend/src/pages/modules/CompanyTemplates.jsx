@@ -21,8 +21,10 @@ const TemplateNameInput = ({ value, onChange }) => {
             className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50"
             placeholder="e.g., Creative Layout V1"
             value={localName}
-            onChange={(e) => setLocalName(e.target.value)}
-            onBlur={() => onChange(localName)}
+            onChange={(e) => {
+                setLocalName(e.target.value);
+                onChange(e.target.value);  // sync on every keystroke, not just on blur
+            }}
         />
     );
 };
@@ -119,7 +121,8 @@ export default function CompanyTemplates() {
             const payload = { ...formData, companyId };
 
             if (currentTemplate && currentTemplate.type === 'COMPANY') {
-                await api.patch(`/invoice-templates/${currentTemplate._id}`, payload);
+                const templateId = currentTemplate.id || currentTemplate._id;
+                await api.patch(`/invoice-templates/${templateId}`, payload);
                 toast.success("Template updated");
             } else {
                 await api.post('/invoice-templates', payload);
@@ -172,14 +175,14 @@ export default function CompanyTemplates() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {templates.map(template => (
-                        <div key={template._id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-indigo-300 hover:shadow-md transition-all group relative">
+                        <div key={template.id || template._id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-indigo-300 hover:shadow-md transition-all group relative">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-2">
                                     <div className={`p-2 rounded-lg ${template.type === 'GLOBAL' ? 'bg-slate-100 text-slate-500' : 'bg-indigo-50 text-indigo-600'}`}>
                                         <FileText size={20} />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-slate-800 leading-tight">{template.name}</h4>
+                                        <h4 className="font-bold text-slate-800 leading-tight">{template.name || <span className="italic text-slate-400">Unnamed Template</span>}</h4>
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
                                             {template.type === 'GLOBAL' ? 'System Default' : 'Custom Template'}
                                         </p>
@@ -204,7 +207,7 @@ export default function CompanyTemplates() {
 
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => window.location.href = `/dashboard/invoices/new?templateId=${template._id}`}
+                                    onClick={() => window.location.href = `/dashboard/invoices/new?templateId=${template.id || template._id}`}
                                     className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
                                 >
                                     Use Template
@@ -228,7 +231,7 @@ export default function CompanyTemplates() {
                                             <Edit2 size={20} />
                                         </button>
                                         <button
-                                            onClick={() => handleDelete(template._id)}
+                                            onClick={() => handleDelete(template.id || template._id)}
                                             className="p-2 border border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                             title="Delete Template"
                                         >

@@ -143,7 +143,7 @@ export default function Customers() {
                                 </tr>
                             ) : (
                                 filteredCustomers.map((customer) => (
-                                    <tr key={customer._id} className="hover:bg-slate-50 transition cursor-pointer" onClick={() => navigate(`/dashboard/customers/${customer._id}`)}>
+                                    <tr key={customer.id || customer._id} className="hover:bg-slate-50 transition cursor-pointer" onClick={() => navigate(`/dashboard/customers/${customer.id || customer._id}`)}>
                                         <td className="px-6 py-4">
                                             <div className="font-semibold text-slate-900">{customer.name}</div>
                                             <div className="text-xs text-slate-500 flex items-center mt-1">
@@ -176,7 +176,7 @@ export default function Customers() {
                                                     Receive Payment
                                                 </button>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/customers/${customer._id}`); }}
+                                                    onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/customers/${customer.id || customer._id}`); }}
                                                     className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
                                                     title="View Ledger"
                                                 >

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Invoice } from '../../models/Modules/Invoice.js';
+import { prisma } from '../../src/config/db.js';
 
 // Get all invoices
 export const getInvoices = async (req: Request, res: Response) => {
@@ -11,11 +11,14 @@ export const getInvoices = async (req: Request, res: Response) => {
         }
 
         const filter = {
-            companyId,
+            companyId: String(companyId),
             isDeleted: isDeleted === 'true' // Convert string 'true' to boolean true, else false
         };
 
-        const invoices = await Invoice.find(filter).sort({ date: -1 });
+        const invoices = await prisma.invoice.findMany({
+            where: filter,
+            orderBy: { date: 'desc' }
+        });
         res.status(200).json(invoices);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -26,7 +29,13 @@ export const getInvoices = async (req: Request, res: Response) => {
 export const getInvoiceById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const invoice = await Invoice.findById(id).populate('customerId', 'name email');
+        const invoice = await prisma.invoice.findUnique({
+            where: { id: String(id) },
+            include: {
+                customer: { select: { name: true, email: true } },
+                items: true
+            }
+        });
 
         if (!invoice || invoice.isDeleted) {
             return res.status(404).json({ message: 'Invoice not found' });
@@ -41,76 +50,76 @@ export const getInvoiceById = async (req: Request, res: Response) => {
 // Create invoice
 export const createInvoice = async (req: Request, res: Response) => {
     try {
-        const { companyId, invoiceNumber, customerId, customerName, clientAddress, gstNumber, date, dueDate, items, status, templateId, layout, taxRate: providedTaxRate } = req.body;
+        const { companyId, invoiceNumber, customerId, customerName, clientAddress, gstNumber, date, items, status, templateId, layout, taxRate: providedTaxRate, customAttributes } = req.body;
 
         if (!companyId || !invoiceNumber || !customerId) {
             return res.status(400).json({ message: 'Company ID, Customer ID, and Invoice Number are required' });
         }
 
-        // Use tax rate from request or default to 10
         const taxRate = providedTaxRate !== undefined ? providedTaxRate : 10;
-
-        // Calculate totals
-        const subtotal = items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+        const subtotal = (items || []).reduce((sum: number, item: any) => sum + (item.total || 0), 0);
         const taxTotal = subtotal * (taxRate / 100);
         const grandTotal = subtotal + taxTotal;
 
-        // INVENTORY INTEGRATION & CLEANSING
         const cleansedItems = (items || []).map((item: any) => {
             const newItem = { ...item };
             if (newItem.inventoryId === "" || newItem.inventoryId === null) {
                 delete newItem.inventoryId;
             }
-            // Ensure numeric fields are actually numbers, default to 0
             newItem.quantity = parseFloat(item.quantity) || 0;
             newItem.price = parseFloat(item.price) || 0;
             newItem.total = parseFloat(item.total) || 0;
+            // Handle customFields if they exist
+            if (newItem.customFields && typeof newItem.customFields !== 'object') {
+                newItem.customFields = {};
+            }
             return newItem;
         });
 
-        if (status !== 'DRAFT') { // Only deduct if actual sale
+        if (status !== 'DRAFT') {
             for (const item of cleansedItems) {
                 if (item.inventoryId) {
-                    const inventoryItem = await (await import('../../models/Modules/InventoryItem.js')).InventoryItem.findById(item.inventoryId);
+                    const inventoryItem = await prisma.inventoryItem.findUnique({ where: { id: item.inventoryId } });
+                    if (inventoryItem && inventoryItem.quantityOnHand < item.quantity) {
+                        return res.status(400).json({ message: `Insufficient stock for ${item.description}` });
+                    }
                     if (inventoryItem) {
-                        if (inventoryItem.quantityOnHand < item.quantity) {
-                            return res.status(400).json({ message: `Insufficient stock for ${item.description}` });
-                        }
-                        inventoryItem.quantityOnHand -= item.quantity;
-                        await inventoryItem.save();
+                        await prisma.inventoryItem.update({
+                            where: { id: inventoryItem.id },
+                            data: { quantityOnHand: { decrement: item.quantity } }
+                        });
                     }
                 }
             }
         }
 
-        const newInvoice = new Invoice({
-            companyId,
-            invoiceNumber,
-            customerId,
-            customerName, // snapshot
-            clientAddress, // snapshot
-            gstNumber,
-            date,
-            dueDate,
-            items: cleansedItems,
-            subtotal,
-            taxTotal,
-            grandTotal,
-            status: status || 'DRAFT',
-            templateId,
-            layout: layout || [],
-            taxRate
+        const newInvoice = await prisma.invoice.create({
+            data: {
+                companyId: String(companyId),
+                invoiceNumber: String(invoiceNumber),
+                customerId: String(customerId),
+                customerName: String(customerName || ''),
+                clientAddress: String(clientAddress || ''),
+                gstNumber: gstNumber ? String(gstNumber) : undefined,
+                date: new Date(date),
+                subtotal,
+                taxTotal,
+                grandTotal,
+                status: status || 'DRAFT',
+                templateId: templateId ? String(templateId) : undefined,
+                layout: layout || [],
+                customAttributes: customAttributes || [],
+                taxRate,
+                items: {
+                    create: cleansedItems
+                }
+            },
+            include: { items: true }
         });
-
-        await newInvoice.save();
 
         res.status(201).json(newInvoice);
     } catch (error: any) {
         console.error("CRITICAL ERROR IN CREATE INVOICE:", error);
-        if (error.name === 'ValidationError') {
-            const details = Object.keys(error.errors).map(k => `${k}: ${error.errors[k].message}`).join(', ');
-            return res.status(400).json({ message: `Validation error: ${details}`, errors: error.errors });
-        }
         res.status(500).json({ message: error.message || "Server Error" });
     }
 };
@@ -119,57 +128,96 @@ export const createInvoice = async (req: Request, res: Response) => {
 export const updateInvoice = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
 
-        // Recalculate totals if items or taxRate changed
-        if (updates.items || updates.taxRate !== undefined) {
-            const taxRate = updates.taxRate !== undefined ? updates.taxRate : 10;
+        // Destructure ONLY known safe scalar fields — do NOT spread req.body directly
+        // because getInvoiceById includes customer/company relations and those break Prisma update
+        const {
+            invoiceNumber,
+            customerId,
+            customerName,
+            clientAddress,
+            gstNumber,
+            date,
+            status,
+            templateId,
+            layout,
+            isDeleted,
+            items,
+            taxRate: providedTaxRate,
+            customAttributes,
+        } = req.body;
 
-            // Cleanse items
-            const cleansedItems = (updates.items || []).map((item: any) => {
-                const newItem = { ...item };
-                if (newItem.inventoryId === "" || newItem.inventoryId === null) {
-                    delete newItem.inventoryId;
-                }
-                newItem.quantity = parseFloat(item.quantity) || 0;
-                newItem.price = parseFloat(item.price) || 0;
-                newItem.total = parseFloat(item.total) || 0;
-                return newItem;
-            });
+        const taxRate = providedTaxRate !== undefined ? providedTaxRate : 10;
 
-            const subtotal = cleansedItems.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
-            const taxTotal = subtotal * (taxRate / 100);
+        const cleansedItems = (items || []).map((item: any) => {
+            const newItem = { ...item };
+            // Strip Prisma relation & identity fields
+            delete newItem.id;
+            delete newItem.invoiceId;
+            delete newItem.invoice;
+            delete newItem.inventory;
+            delete newItem.customFields;
+            if (newItem.inventoryId === '' || newItem.inventoryId === null) {
+                delete newItem.inventoryId;
+            }
+            newItem.quantity = parseFloat(item.quantity) || 0;
+            newItem.price = parseFloat(item.price) || 0;
+            newItem.total = parseFloat(item.total) || 0;
+            return newItem;
+        });
 
-            updates.items = cleansedItems;
-            updates.subtotal = subtotal;
-            updates.taxTotal = taxTotal;
-            updates.grandTotal = subtotal + taxTotal;
-            updates.taxRate = taxRate;
-        }
+        const subtotal = cleansedItems.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+        const taxTotal = subtotal * (taxRate / 100);
+        const grandTotal = subtotal + taxTotal;
 
-        const invoice = await Invoice.findByIdAndUpdate(id, { ...updates, lastModifiedAt: Date.now() }, { new: true });
+        // Delete existing items and recreate (safest approach)
+        await prisma.invoiceItem.deleteMany({ where: { invoiceId: String(id) } });
 
-        if (!invoice) {
-            return res.status(404).json({ message: 'Invoice not found' });
-        }
+        const updates: any = {
+            lastModifiedAt: new Date(),
+            taxRate,
+            subtotal,
+            taxTotal,
+            grandTotal,
+            items: { create: cleansedItems },
+        };
+
+        // Only include fields that are actually provided
+        if (invoiceNumber !== undefined) updates.invoiceNumber = invoiceNumber;
+        if (customerId !== undefined) updates.customerId = customerId;
+        if (customerName !== undefined) updates.customerName = customerName;
+        if (clientAddress !== undefined) updates.clientAddress = clientAddress;
+        if (gstNumber !== undefined) updates.gstNumber = gstNumber;
+        if (date !== undefined) updates.date = new Date(date);
+        if (status !== undefined) updates.status = status;
+        if (templateId !== undefined) updates.templateId = templateId;
+        if (layout !== undefined) updates.layout = layout;
+        if (isDeleted !== undefined) updates.isDeleted = isDeleted;
+        if (customAttributes !== undefined) updates.customAttributes = customAttributes;
+
+        const invoice = await prisma.invoice.update({
+            where: { id: String(id) },
+            data: updates,
+            include: { items: true }
+        });
 
         res.status(200).json(invoice);
     } catch (error: any) {
-        console.error("CRITICAL ERROR IN UPDATE INVOICE:", error);
-        if (error.name === 'ValidationError') {
-            const details = Object.keys(error.errors).map(k => `${k}: ${error.errors[k].message}`).join(', ');
-            return res.status(400).json({ message: `Validation error: ${details}` });
-        }
-        res.status(500).json({ message: error.message || "Server Error" });
+        console.error('CRITICAL ERROR IN UPDATE INVOICE:', error);
+        res.status(500).json({ message: error.message || 'Server Error' });
     }
 };
+
 
 // Delete invoice
 export const deleteInvoice = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
-        const invoice = await Invoice.findByIdAndUpdate(id, { isDeleted: true, lastModifiedAt: Date.now() }, { new: true });
+        const invoice = await prisma.invoice.update({
+            where: { id: String(id) },
+            data: { isDeleted: true, lastModifiedAt: new Date() }
+        });
 
         if (!invoice) {
             return res.status(404).json({ message: 'Invoice not found' });

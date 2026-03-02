@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/Global/User.js';
-import { Company } from '../models/Global/Company.js';
-import { Plan } from '../models/Global/Plan.js';
+import { prisma } from '../src/config/db.js';
 
 const generateToken = (id: string) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'dev_secret', {
@@ -16,19 +14,21 @@ export const registerCompany = async (req: Request, res: Response) => {
     try {
         const { companyName, ownerName, email, password } = req.body;
 
-        const userExists = await User.findOne({ email });
+        const userExists = await prisma.user.findUnique({ where: { email } });
         if (userExists) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
         // 1. Get Default Plan (Basic)
-        let plan = await Plan.findOne({ code: 'BASIC' });
+        let plan = await prisma.plan.findUnique({ where: { code: 'BASIC' } });
         if (!plan) {
             // Create fallback plan if not seeding
-            plan = await Plan.create({
-                code: 'BASIC',
-                name: 'Basic',
-                priceMonthly: 0
+            plan = await prisma.plan.create({
+                data: {
+                    code: 'BASIC',
+                    name: 'Basic',
+                    priceMonthly: 0
+                }
             });
         }
 
@@ -36,35 +36,41 @@ export const registerCompany = async (req: Request, res: Response) => {
         // Generate a random API key for the company (simple implementation)
         const apiKey = `sk_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
-        const company = await Company.create({
-            name: companyName,
-            planId: plan._id,
-            subscriptionStatus: 'trial',
-            featureFlags: plan.defaultFlags,
-            apiKey
+        const company = await prisma.company.create({
+            data: {
+                name: companyName,
+                planId: plan.id,
+                subscriptionStatus: 'trial',
+                featureFlags: plan.defaultFlags || {},
+                apiKey
+            }
         });
 
         // 3. Create Owner
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        const user = await User.create({
-            fullName: ownerName,
-            email,
-            passwordHash,
-            memberships: [{
-                companyId: company._id,
-                role: 'OWNER'
-            }],
-            isSuperAdmin: false
+        const user = await prisma.user.create({
+            data: {
+                fullName: ownerName,
+                email,
+                passwordHash,
+                isSuperAdmin: false,
+                memberships: {
+                    create: {
+                        companyId: company.id,
+                        role: 'OWNER'
+                    }
+                }
+            }
         });
 
         res.status(201).json({
-            _id: user._id,
+            _id: user.id,
             fullName: user.fullName,
             email: user.email,
-            token: generateToken((user._id as any).toString()),
-            companyId: company._id
+            token: generateToken(user.id),
+            companyId: company.id
         });
 
     } catch (error: any) {
@@ -76,12 +82,21 @@ export const registerCompany = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email }).populate('memberships.companyId');
+        const user = await prisma.user.findUnique({
+            where: { email },
+            include: {
+                memberships: {
+                    include: { company: true }
+                }
+            }
+        });
 
         if (user && user.passwordHash && (await bcrypt.compare(password, user.passwordHash))) {
             // Update last login
-            user.lastLoginAt = new Date();
-            await user.save();
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { lastLoginAt: new Date() }
+            });
 
             // Determine default company context (first membership)
             const primaryCompany = user.memberships.length > 0 ? user.memberships[0].companyId : null;
@@ -89,13 +104,13 @@ export const login = async (req: Request, res: Response) => {
             console.log("Login User:", user.email, "Primary Company:", primaryCompany);
 
             res.json({
-                _id: user._id,
+                _id: user.id,
                 fullName: user.fullName,
                 email: user.email,
                 isSuperAdmin: user.isSuperAdmin,
                 memberships: user.memberships,
-                currentCompanyId: primaryCompany?._id, // Client can switch if multiple
-                token: generateToken((user._id as any).toString()),
+                currentCompanyId: primaryCompany, // Client can switch if multiple
+                token: generateToken(user.id),
             });
         } else {
             res.status(401).json({ message: 'Invalid email or password' });

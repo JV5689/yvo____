@@ -1,0 +1,477 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// GLOBAL MODELS
+// ----------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String?
+  googleId     String?
+  fullName     String?
+  avatarUrl    String?   @db.LongText
+  isSuperAdmin Boolean   @default(false)
+  refreshToken String?   @db.Text
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  memberships  UserMembership[]
+  workReports  WorkReport[]
+  messagesSent BroadcastMessage[] @relation("Sender")
+}
+
+model UserMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  role      String   @default("EMPLOYEE") // 'OWNER', 'ADMIN', 'EMPLOYEE'
+  joinedAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+}
+
+model Company {
+  id           String  @id @default(cuid())
+  name         String
+  businessType String?
+  logo         String?   @db.LongText
+  email        String?
+  phone        String?
+  website      String?
+  address      String? @db.Text
+  currency     String  @default("INR")
+
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id])
+
+  subscriptionStatus String    @default("trial") // 'trial', 'active', 'past_due', 'suspended', 'cancelled'
+  trialEndsAt        DateTime?
+  subscriptionEndsAt DateTime?
+
+  featureFlags        Json? // Map<string, boolean>
+  limitOverrides      Json? // { users, storageGB, aiCredits }
+  invoiceEditPassword String?
+  maxDevices          Int      @default(5)
+  apiKey              String?  @unique
+  invoiceAttributes   Json? // Array of Strings
+  devices             Device[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships       UserMembership[]
+  customers         Customer[]
+  employees         Employee[]
+  invoices          Invoice[]
+  inventoryItems    InventoryItem[]
+  payments          Payment[]
+  invoiceTemplates  InvoiceTemplate[]
+  expenses          Expense[]
+  leaveRequests     LeaveRequest[]
+  salaryRecords     SalaryRecord[]
+  workReports       WorkReport[]
+  broadcastGroups   BroadcastGroup[]
+  broadcastMessages BroadcastMessage[]
+  calendarEvents    CalendarEvent[]
+  backupJobs        BackupJob[]
+}
+
+model Device {
+  id         String   @id @default(cuid())
+  companyId  String
+  deviceId   String
+  deviceName String
+  lastSyncAt DateTime
+  isRevoked  Boolean  @default(false)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Plan {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  priceMonthly  Float
+  currency      String   @default("USD")
+  defaultFlags  Json? // Map<string, boolean>
+  defaultLimits Json? // { users, storageGB, aiCredits, invoicesPerMonth }
+  isArchived    Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+
+  companies Company[]
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  scope       String   @default("global") // 'global', 'beta', 'internal'
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  companyId   String?
+  actorId     String // Can be User ID or other
+  action      String
+  targetId    String?
+  targetModel String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+}
+
+model ClientLogo {
+  id        String   @id @default(cuid())
+  name      String
+  logoUrl   String    @db.LongText
+  createdAt DateTime @default(now())
+}
+
+model BackupJob {
+  id            String   @id @default(cuid())
+  companyId     String
+  createdBy     Json // Mixed type in Mongo, saving as JSON
+  backupId      String   @unique
+  status        String   @default("QUEUED") // 'QUEUED', 'PROCESSING', 'READY', 'FAILED', 'EXPIRED'
+  progress      Float    @default(0)
+  currentModule String?
+  filters       Json?
+  recordCounts  Json? // Map
+  filePath      String?
+  fileSize      Float?
+  expiresAt     DateTime
+  error         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------------------------------
+// MODULE MODELS
+// ----------------------------------------------------------------------------
+
+model Customer {
+  id             String   @id @default(cuid())
+  companyId      String
+  name           String
+  email          String?
+  phone          String?
+  address        String?  @db.Text
+  taxId          String?
+  lastModifiedAt DateTime @default(now())
+  isDeleted      Boolean  @default(false)
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+  payments Payment[]
+
+  @@unique([companyId, phone])
+}
+
+model Employee {
+  id                 String   @id @default(cuid())
+  companyId          String
+  firstName          String
+  lastName           String
+  email              String   @unique
+  phone              String   @unique
+  password           String
+  category           String   @default("General")
+  avatar             String?  @db.LongText
+  position           String
+  department         String?
+  salary             Float    @default(0)
+  freeLeavesPerMonth Float    @default(1)
+  workingDaysPerWeek Float    @default(6)
+  status             String   @default("Active") // 'Active', 'On Leave', 'Terminated'
+  dateHired          DateTime @default(now())
+  isDeleted          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  company           Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salaryHistory     SalaryHistory[]
+  leaveRequests     LeaveRequest[]
+  salaryRecords     SalaryRecord[]
+  broadcastGroupMem BroadcastGroupMember[]
+}
+
+model SalaryHistory {
+  id         String   @id @default(cuid())
+  employeeId String
+  amount     Float
+  changeDate DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model InventoryItem {
+  id             String   @id @default(cuid())
+  companyId      String
+  sku            String
+  name           String
+  description    String?  @db.Text
+  quantityOnHand Float    @default(0)
+  reorderLevel   Float    @default(5)
+  costPrice      Float?
+  sellingPrice   Float?
+  category       String?
+  lastModifiedAt DateTime @default(now())
+  isDeleted      Boolean  @default(false)
+
+  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoiceItems  InvoiceItem[]
+  templateItems InvoiceTemplateItem[]
+
+  @@unique([companyId, sku])
+}
+
+model Invoice {
+  id               String   @id @default(cuid())
+  companyId        String
+  invoiceNumber    String
+  customerId       String
+  customerName     String?
+  clientAddress    String?  @db.Text
+  gstNumber        String?
+  date             DateTime @default(now())
+  subtotal         Float?
+  taxTotal         Float?
+  grandTotal       Float?
+  taxRate          Float    @default(10)
+  status           String   @default("DRAFT") // 'DRAFT', 'ISSUED', 'CANCELLED'
+  lastModifiedAt   DateTime @default(now())
+  isDeleted        Boolean  @default(false)
+  templateId       String?
+  layout           Json? // Array of Mixed
+  customAttributes Json? // Array of key-value pair objects
+
+  company  Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer Customer                   @relation(fields: [customerId], references: [id])
+  template InvoiceTemplate?           @relation(fields: [templateId], references: [id])
+  items    InvoiceItem[]
+  payments PaymentInvoiceAllocation[]
+
+  @@unique([companyId, invoiceNumber])
+}
+
+model InvoiceItem {
+  id           String  @id @default(cuid())
+  invoiceId    String
+  inventoryId  String?
+  description  String?
+  quantity     Float?
+  price        Float?
+  total        Float?
+  customFields Json? // For strict: false fields
+
+  invoice   Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  inventory InventoryItem? @relation(fields: [inventoryId], references: [id])
+}
+
+model Payment {
+  id         String   @id @default(cuid())
+  companyId  String
+  customerId String
+  amount     Float
+  date       DateTime @default(now())
+  method     String   @default("CASH")
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company     Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer                   @relation(fields: [customerId], references: [id])
+  allocations PaymentInvoiceAllocation[]
+}
+
+model PaymentInvoiceAllocation {
+  id        String @id @default(cuid())
+  paymentId String
+  invoiceId String
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, invoiceId])
+}
+
+model InvoiceTemplate {
+  id              String   @id @default(cuid())
+  companyId       String? // Optional for GLOBAL type
+  name            String
+  type            String   @default("COMPANY") // 'GLOBAL', 'COMPANY'
+  themeIdentifier String   @default("classic")
+  layout          Json? // Array of layout objects
+  taxRate         Float    @default(10)
+  notes           String?  @db.Text
+  isDeleted       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company  Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items    InvoiceTemplateItem[]
+  invoices Invoice[]
+}
+
+model InvoiceTemplateItem {
+  id           String  @id @default(cuid())
+  templateId   String
+  inventoryId  String?
+  description  String?
+  quantity     Float   @default(1)
+  price        Float   @default(0)
+  total        Float   @default(0)
+  customFields Json? // strictly false properties
+
+  template  InvoiceTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  inventory InventoryItem?  @relation(fields: [inventoryId], references: [id])
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  companyId     String
+  category      String
+  amount        Float
+  date          DateTime @default(now())
+  description   String?  @db.Text
+  paymentMethod String?
+  receiptUrl    String?  @db.LongText
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model LeaveRequest {
+  id          String   @id @default(cuid())
+  companyId   String
+  employeeId  String
+  type        String // 'Sick Leave', 'Casual Leave', 'Paid Leave', 'Unpaid Leave'
+  startDate   DateTime
+  endDate     DateTime
+  reason      String   @db.Text
+  status      String   @default("Pending") // 'Pending', 'Approved', 'Rejected'
+  adminRemark String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model SalaryRecord {
+  id              String   @id @default(cuid())
+  companyId       String
+  employeeId      String
+  amount          Float
+  baseSalary      Float?
+  bonus           Float    @default(0)
+  leavesTaken     Float    @default(0)
+  freeLeaves      Float    @default(0)
+  deductionAmount Float    @default(0)
+  paymentDate     DateTime
+  payPeriod       String
+  remarks         String?  @db.Text
+  status          String   @default("Paid") // 'Paid', 'Pending', 'Processing'
+  slipUrl         String?  @db.LongText
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model WorkReport {
+  id             String   @id @default(cuid())
+  employeeId     String
+  companyId      String
+  date           DateTime @default(now())
+  tasksCompleted String   @db.Text
+  issues         String?  @db.Text
+  nextDayPlan    String?  @db.Text
+  status         String   @default("Submitted") // 'Submitted', 'Reviewed'
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  employee User    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model BroadcastGroup {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company  Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  messages BroadcastMessage[]
+  members  BroadcastGroupMember[]
+}
+
+model BroadcastGroupMember {
+  id         String @id @default(cuid())
+  groupId    String
+  employeeId String
+
+  group    BroadcastGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  employee Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, employeeId])
+}
+
+model BroadcastMessage {
+  id          String   @id @default(cuid())
+  companyId   String
+  senderId    String
+  groupId     String?
+  targetAll   Boolean  @default(false)
+  content     String   @db.Text
+  attachments Json? // Array of strings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sender  User            @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  group   BroadcastGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model CalendarEvent {
+  id               String   @id @default(cuid())
+  companyId        String
+  title            String
+  description      String?  @db.Text
+  start            DateTime
+  end              DateTime
+  type             String   @default("Meeting") // 'Meeting', 'Task', 'Reminder', 'Holiday'
+  visibility       String   @default("public") // 'public', 'private', 'category'
+  targetCategories Json? // string[]
+  attendees        Json? // string[]
+  status           String   @default("Confirmed")
+  isDeleted        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}

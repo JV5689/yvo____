@@ -3,9 +3,9 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { ArrowLeft, User, Phone, MapPin, Mail, FileText, IndianRupee, History, Activity, Download, Edit, Search, Calendar as CalendarIcon, CreditCard, ChevronDown, CheckCircle2 } from 'lucide-react';
-import html2pdf from 'html2pdf.js';
+
 import Modal from '../Modal';
-import InvoiceBuilder from '../../pages/modules/InvoiceBuilder';
+import InvoiceViewerModal from '../invoice-builder/InvoiceViewerModal';
 
 export default function CustomerProfile() {
     const { id } = useParams();
@@ -41,7 +41,7 @@ export default function CustomerProfile() {
             if (selectedPaymentId) {
                 await api.patch(`/client-payments/${selectedPaymentId}`, {
                     companyId: companyId,
-                    customerId: customer._id,
+                    customerId: customer.id || customer._id,
                     amount: parseFloat(paymentData.amount),
                     date: paymentData.date,
                     method: paymentData.method
@@ -50,7 +50,7 @@ export default function CustomerProfile() {
             } else {
                 await api.post('/client-payments', {
                     companyId: companyId,
-                    customerId: customer._id,
+                    customerId: customer.id || customer._id,
                     amount: parseFloat(paymentData.amount),
                     date: paymentData.date,
                     method: paymentData.method
@@ -78,7 +78,7 @@ export default function CustomerProfile() {
     };
 
     const openEditPaymentModal = (payment) => {
-        setSelectedPaymentId(payment._id);
+        setSelectedPaymentId(payment.id || payment._id);
         setPaymentData({
             amount: payment.amount.toString(),
             date: new Date(payment.date).toISOString().slice(0, 10),
@@ -107,107 +107,9 @@ export default function CustomerProfile() {
     }, [id]);
 
     const handleDownload = (e, invoice) => {
-        e.stopPropagation();
-        const element = document.createElement('div');
-        element.style.width = '210mm';
-        element.style.padding = '10mm';
-        element.style.background = 'white';
-        element.style.color = 'black';
-
-        const subtotal = invoice.items.reduce((s, i) => s + (i.total || 0), 0);
-        const taxRate = invoice.taxRate !== undefined ? invoice.taxRate : 10;
-        const tax = subtotal * (taxRate / 100);
-        const total = subtotal + tax;
-
-        const itemsRows = (invoice.items || []).map(item => `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 12px 15px; color: #334155; font-size: 13px;">${item.description || 'Item'}</td>
-                <td style="padding: 12px 15px; text-align: center; color: #64748b; font-size: 13px;">${item.quantity}</td>
-                <td style="padding: 12px 15px; text-align: right; color: #64748b; font-size: 13px;">₹${item.price?.toFixed(2)}</td>
-                <td style="padding: 12px 15px; text-align: right; color: #0f172a; font-weight: 600; font-size: 13px;">₹${item.total?.toFixed(2)}</td>
-            </tr>
-        `).join('');
-
-        element.innerHTML = `
-            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5;">
-                <div style="height: 15px; background: #312e81; margin-bottom: 30px;"></div>
-                <div style="padding: 0 10px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 50px;">
-                        <div style="width: 50%;">
-                            ${config?.company?.logo ? `<img src="${config.company.logo}" style="height: 80px; margin-bottom: 15px; display: block;" />` : ''}
-                            <h2 style="margin: 0; color: #0f172a; font-size: 20px;">${config?.company?.name || 'YVO Company'}</h2>
-                            <p style="margin: 5px 0 0; font-size: 13px; color: #64748b;">
-                                ${config?.company?.address || '123 Business St'}<br/>
-                                ${config?.company?.email ? `${config.company.email}<br/>` : ''}
-                                ${config?.company?.phone ? `${config.company.phone}<br/>` : ''}
-                            </p>
-                        </div>
-                        <div style="width: 40%; text-align: right;">
-                            <h1 style="font-size: 42px; font-weight: 900; color: #e2e8f0; margin: 0; letter-spacing: -2px;">INVOICE</h1>
-                            <div style="margin-top: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                    <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Invoice #</span>
-                                    <span style="font-family: monospace; font-weight: bold; color: #334155;">${invoice.invoiceNumber}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                    <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Date</span>
-                                    <span style="font-size: 13px; font-weight: 500;">${new Date(invoice.date).toLocaleDateString()}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Status</span>
-                                    <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; background: #e2e8f0; border-radius: 4px;">${invoice.status}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 50px; padding: 20px 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                        <div style="width: 45%;">
-                            <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px;">Bill To</span>
-                            <h3 style="margin: 0 0 5px; font-size: 16px; color: #0f172a;">${invoice.customerName || customer.name}</h3>
-                            <p style="margin: 0; font-size: 13px; color: #64748b; white-space: pre-wrap;">${invoice.clientAddress || customer.address || 'Client Address'}</p>
-                        </div>
-                        <div style="width: 45%;">
-                            <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px;">Terms</span>
-                            ${invoice.dueDate ? `
-                                <div style="margin-bottom: 5px;">
-                                    <span style="font-size: 13px; color: #64748b;">Due Date:</span>
-                                    <span style="font-weight: bold; color: #0f172a; margin-left: 5px;">${new Date(invoice.dueDate).toLocaleDateString()}</span>
-                                </div>
-                            ` : '<p style="font-size: 13px; color: #64748b;">Payment due on receipt</p>'}
-                        </div>
-                    </div>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
-                        <thead>
-                            <tr style="background: #1e293b; color: white;">
-                                <th style="padding: 12px 15px; text-align: left; font-size: 13px; font-weight: 600; border-radius: 6px 0 0 6px;">Description</th>
-                                <th style="padding: 12px 15px; text-align: center; font-size: 13px; font-weight: 600; width: 60px;">Qty</th>
-                                <th style="padding: 12px 15px; text-align: right; font-size: 13px; font-weight: 600; width: 100px;">Price</th>
-                                <th style="padding: 12px 15px; text-align: right; font-size: 13px; font-weight: 600; width: 100px; border-radius: 0 6px 6px 0;">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>${itemsRows}</tbody>
-                    </table>
-                    <div style="display: flex; justify-content: flex-end;">
-                        <div style="width: 300px; background: #f8fafc; padding: 20px; border-radius: 8px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px;">
-                                <span style="color: #64748b; font-weight: 500;">Subtotal</span>
-                                <span style="color: #0f172a; font-weight: 600;">₹${subtotal.toFixed(2)}</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 13px;">
-                                <span style="color: #64748b; font-weight: 500;">Tax (${taxRate}%)</span>
-                                <span style="color: #0f172a; font-weight: 600;">₹${tax.toFixed(2)}</span>
-                            </div>
-                            <div style="height: 1px; background: #e2e8f0; margin-bottom: 15px;"></div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="color: #312e81; font-weight: 700; font-size: 16px;">Total</span>
-                                <span style="color: #312e81; font-weight: 800; font-size: 20px;">₹${total.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        html2pdf().from(element).save(`${invoice.invoiceNumber}.pdf`);
+        if (e) e.stopPropagation();
+        setSelectedInvoiceId(invoice.id || invoice._id);
+        setIsInvoiceModalOpen(true);
     };
 
     const handleEdit = (e, invoiceId) => {
@@ -368,9 +270,9 @@ export default function CustomerProfile() {
                                         <tr><td colSpan="4" className="text-center py-4 text-slate-500">No invoices found.</td></tr>
                                     ) : (
                                         (customer.invoices || []).map(inv => (
-                                            <tr key={inv._id} className="hover:bg-slate-50 transition">
+                                            <tr key={inv.id || inv._id} className="hover:bg-slate-50 transition">
                                                 <td className="px-4 py-3">{new Date(inv.date).toLocaleDateString()}</td>
-                                                <td className="px-4 py-3 font-medium text-indigo-600 cursor-pointer" onClick={() => handleEdit(null, inv._id)}>{inv.invoiceNumber}</td>
+                                                <td className="px-4 py-3 font-medium text-indigo-600 cursor-pointer" onClick={() => handleEdit(null, inv.id || inv._id)}>{inv.invoiceNumber}</td>
                                                 <td className="px-4 py-3">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold ${inv.status === 'PAID' ? 'bg-green-100 text-green-700' : inv.status === 'DRAFT' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}`}>
                                                         {inv.status}
@@ -382,7 +284,7 @@ export default function CustomerProfile() {
                                                         <button onClick={(e) => handleDownload(e, inv)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition" title="Download">
                                                             <Download size={16} />
                                                         </button>
-                                                        <button onClick={(e) => handleEdit(e, inv._id)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit">
+                                                        <button onClick={(e) => handleEdit(e, inv.id || inv._id)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit">
                                                             <Edit size={16} />
                                                         </button>
                                                     </div>
@@ -411,7 +313,7 @@ export default function CustomerProfile() {
                                         <tr><td colSpan="4" className="text-center py-4 text-slate-500">No payments found.</td></tr>
                                     ) : (
                                         (customer.payments || []).map(pay => (
-                                            <tr key={pay._id} className="hover:bg-slate-50 transition">
+                                            <tr key={pay.id || pay._id} className="hover:bg-slate-50 transition">
                                                 <td className="px-4 py-3">{new Date(pay.date).toLocaleDateString()}</td>
                                                 <td className="px-4 py-3 text-slate-700 font-medium">{pay.method || 'CASH'}</td>
                                                 <td className="px-4 py-3 text-right font-medium text-green-600">₹{pay.amount.toLocaleString()}</td>
@@ -573,20 +475,12 @@ export default function CustomerProfile() {
                 </form>
             </Modal>
 
-            <Modal
+            <InvoiceViewerModal
+                invoiceId={selectedInvoiceId}
                 isOpen={isInvoiceModalOpen}
                 onClose={() => setIsInvoiceModalOpen(false)}
-                title={selectedInvoiceId ? "Edit Invoice" : "Create Invoice"}
-                maxWidth="max-w-6xl"
-            >
-                <InvoiceBuilder
-                    invoiceId={selectedInvoiceId}
-                    onClose={() => {
-                        setIsInvoiceModalOpen(false);
-                        fetchCustomerLedger();
-                    }}
-                />
-            </Modal>
+                onEdited={fetchCustomerLedger}
+            />
         </div>
     );
 }
