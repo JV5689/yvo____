@@ -7,6 +7,7 @@ import api from '../../services/api';
 import InvoiceRenderer from '../../components/invoice-builder/InvoiceRenderer';
 import toast from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
+import { injectPdfColorFix } from '../../utils/pdfColorFix';
 
 export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditing = false }) {
     const navigate = useNavigate();
@@ -55,7 +56,12 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                 margin: 0,
                 filename: `Invoice-${invoiceData.invoiceNumber || 'draft'}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    onclone: (clonedDoc) => injectPdfColorFix(clonedDoc),
+                },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             }).from(el).save();
             toast.success('PDF downloaded!', { id: 'pdf-gen' });
@@ -142,15 +148,22 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
             }
 
             const companyId = localStorage.getItem('companyId');
+
+            // If no blocks on canvas, snapshot from the selected template
+            const layoutToSave = activeLayout.length > 0
+                ? activeLayout
+                : templates.find(t => (t.id || t._id) === selectedTemplateId)?.layout || [];
+
             const payload = {
                 ...invoiceData,
                 companyId,
                 status,
                 grandTotal: total,
-                layout: activeLayout
+                layout: layoutToSave,
+                templateId: selectedTemplateId || invoiceData.templateId
             };
 
-            // Double check attributes are formatted correctly
+            // Ensure attributes are always an array
             if (!Array.isArray(payload.customAttributes)) payload.customAttributes = [];
 
             if (id) {

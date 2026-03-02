@@ -107,7 +107,12 @@ export const createInvoice = async (req: Request, res: Response) => {
                 grandTotal,
                 status: status || 'DRAFT',
                 templateId: templateId ? String(templateId) : undefined,
-                layout: layout || [],
+                layout: (() => {
+                    // If layout was sent, use it
+                    if (layout && Array.isArray(layout) && layout.length > 0) return layout;
+                    // Otherwise return empty — viewer will fallback to template at display time
+                    return [];
+                })(),
                 customAttributes: customAttributes || [],
                 taxRate,
                 items: {

@@ -8,6 +8,7 @@ import { useOutletContext } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
 import { Download, Edit, Loader2, AlertCircle } from 'lucide-react';
+import { injectPdfColorFix } from '../../utils/pdfColorFix';
 
 export default function InvoiceViewerModal({ invoiceId, isOpen, onClose, onEdited }) {
     const { alert: uiAlert, prompt } = useUI();
@@ -85,10 +86,10 @@ export default function InvoiceViewerModal({ invoiceId, isOpen, onClose, onEdite
         try {
             toast.loading('Generating PDF…', { id: 'pdf-dl' });
 
-            // Build a clean, detached element for pdf generation (not the scaled one)
             const el = pdfRef.current;
             if (!el) throw new Error('PDF element not found');
 
+            // Use injectPdfColorFix to replace Tailwind oklch colors with hex in the cloned doc
             await html2pdf().set({
                 margin: 0,
                 filename: `Invoice-${invoice.invoiceNumber || 'draft'}.pdf`,
@@ -99,6 +100,7 @@ export default function InvoiceViewerModal({ invoiceId, isOpen, onClose, onEdite
                     logging: false,
                     width: 794,
                     windowWidth: 794,
+                    onclone: (clonedDoc) => injectPdfColorFix(clonedDoc),
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             }).from(el).save();
