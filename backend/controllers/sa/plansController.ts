@@ -16,10 +16,11 @@ export const getPlans = async (req: Request, res: Response) => {
 // POST /sa/plans
 export const createPlan = async (req: Request, res: Response) => {
     try {
-        const { defaultFlags, defaultLimits, ...rest } = req.body;
+        const { defaultFlags, defaultLimits, priceMonthly, ...rest } = req.body;
         const plan = await prisma.plan.create({
             data: {
                 ...rest,
+                priceMonthly: priceMonthly ? Number(priceMonthly) : 0,
                 defaultFlags: defaultFlags || {},
                 defaultLimits: defaultLimits || {}
             }
@@ -33,13 +34,17 @@ export const createPlan = async (req: Request, res: Response) => {
 // PATCH /sa/plans/:id
 export const updatePlan = async (req: Request, res: Response) => {
     try {
-        const { defaultFlags, defaultLimits, ...otherUpdates } = req.body;
+        const { defaultFlags, defaultLimits, priceMonthly, ...otherUpdates } = req.body;
         console.log(`[SuperAdmin] Updating plan ${req.params.id}:`, req.body);
 
         let plan = await prisma.plan.findUnique({ where: { id: String(req.params.id) } });
         if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
         const updatedData: any = { ...otherUpdates };
+
+        if (priceMonthly !== undefined) {
+            updatedData.priceMonthly = Number(priceMonthly);
+        }
 
         if (defaultFlags) {
             updatedData.defaultFlags = {
