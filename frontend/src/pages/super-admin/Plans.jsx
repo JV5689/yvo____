@@ -6,6 +6,7 @@ import {
     Globe, BarChart, Save, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 const FEATURE_GROUPS = [
     {
@@ -133,7 +134,17 @@ export default function Plans() {
     };
 
     const handleArchivePlan = async (id) => {
-        if (!window.confirm("Are you sure you want to archive this plan? It will be hidden from new selections.")) return;
+        const result = await Swal.fire({
+            title: 'Archive Plan?',
+            text: 'This plan will be hidden from new selections.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Archive',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            reverseButtons: true,
+        });
+        if (!result.isConfirmed) return;
         try {
             await api.patch(`/sa/plans/${id}/archive`);
             toast.success("Plan archived");

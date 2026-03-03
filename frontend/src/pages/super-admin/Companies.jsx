@@ -6,8 +6,10 @@ import {
     Calendar, CreditCard, Building, User, Eye, Layers, Plus, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useUI } from '../../context/UIContext';
 
 export default function Companies() {
+    const { confirm } = useUI();
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -138,7 +140,13 @@ export default function Companies() {
     };
 
     const handleResetDefaults = async () => {
-        if (!window.confirm("Are you sure? This will remove all custom overrides and revert the company to the Plan's default features.")) return;
+        const ok = await confirm(
+            'Reset to Defaults',
+            "Are you sure? This will remove all custom overrides and revert the company to the Plan's default features.",
+            'Reset',
+            'danger'
+        );
+        if (!ok) return;
         try {
             // Send empty map with replace=true to clear all overrides
             await api.patch(`/sa/companies/${selectedCompany._id}/flags`, {
@@ -155,7 +163,13 @@ export default function Companies() {
     };
 
     const handleDeleteCompany = async (companyId) => {
-        if (!window.confirm("⚠️ DANGER: Are you sure you want to permanently DELETE this company? This action cannot be undone.")) return;
+        const ok = await confirm(
+            'Delete Company',
+            "⚠️ DANGER: Are you sure you want to permanently DELETE this company? This action cannot be undone.",
+            'Delete Permanently',
+            'danger'
+        );
+        if (!ok) return;
 
         try {
             await api.delete(`/sa/companies/${companyId}`);

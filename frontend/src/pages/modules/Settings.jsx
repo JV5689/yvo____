@@ -6,7 +6,7 @@ import { useUI } from '../../context/UIContext';
 
 export default function Settings() {
     const { user } = useAuth();
-    const { alert } = useUI();
+    const { alert, confirm, toast } = useUI();
     const [loading, setLoading] = useState(false);
 
     // In real app, fetch from /api/company/profile
@@ -85,8 +85,8 @@ export default function Settings() {
                 logo: formData.logo
             };
 
-            await api.patch(`/company/${companyId}`, payload);
-            await alert("Success", "Settings Saved Successfully! Changes will reflect across the admin panel.", "success");
+            await api.patch(`/ company / ${companyId} `, payload);
+            toast.success("Settings Saved Successfully!");
         } catch (err) {
             console.error(err);
             const msg = err.response?.data?.message || err.message || "Unknown error";

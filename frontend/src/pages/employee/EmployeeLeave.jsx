@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { Plus, X } from 'lucide-react';
+import { useUI } from '../../context/UIContext';
 
 export default function EmployeeLeave() {
+    const { alert, toast } = useUI();
     const [leaves, setLeaves] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -35,11 +36,12 @@ export default function EmployeeLeave() {
         e.preventDefault();
         try {
             await api.post('/employee/dashboard/leaves', formData);
+            toast.success('Leave application submitted successfully!');
             setShowForm(false);
             setFormData({ type: 'Sick Leave', startDate: '', endDate: '', reason: '' });
             fetchLeaves(); // Refresh list
         } catch (error) {
-            alert('Failed to apply for leave');
+            alert('Error', 'Failed to apply for leave', 'error');
         }
     };
 

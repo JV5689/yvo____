@@ -8,7 +8,7 @@ import html2pdf from 'html2pdf.js';
 import { useUI } from '../../context/UIContext';
 
 export default function Invoicing() {
-    const { alert, confirm, prompt } = useUI();
+    const { alert, confirm, prompt, toast } = useUI();
     const [searchTerm, setSearchTerm] = useState('');
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);

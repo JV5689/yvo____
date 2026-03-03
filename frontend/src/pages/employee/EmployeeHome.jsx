@@ -20,6 +20,7 @@ const StatCard = ({ icon, label, value, subtext }) => (
 export default function EmployeeHome() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { alert, toast } = useUI();
     const [stats, setStats] = useState({
         pendingLeaves: 0,
         upcomingEvents: 0,
@@ -77,13 +78,13 @@ export default function EmployeeHome() {
         e.preventDefault();
         try {
             await api.post('/employee/dashboard/leaves', leaveForm);
-            alert('Leave application submitted successfully!');
+            toast.success('Leave application submitted successfully!');
             setShowLeaveModal(false);
             setLeaveForm({ type: 'Sick Leave', startDate: '', endDate: '', reason: '' });
             fetchStats(); // Refresh stats
         } catch (err) {
             console.error(err);
-            alert('Failed to apply for leave');
+            alert('Error', 'Failed to apply for leave', 'error');
         }
     };
 
@@ -91,15 +92,15 @@ export default function EmployeeHome() {
         e.preventDefault();
         try {
             await api.post('/employee/dashboard/reports', reportForm);
-            alert('Daily report submitted successfully!');
+            toast.success('Daily report submitted successfully!');
             setShowReportModal(false);
             setReportForm({ tasksCompleted: '', issues: '', nextDayPlan: '' });
         } catch (err) {
             console.error(err);
             if (err.response?.status === 400) {
-                alert(err.response.data.message);
+                alert('Warning', err.response.data.message, 'warning');
             } else {
-                alert('Failed to submit report');
+                alert('Error', 'Failed to submit report', 'error');
             }
         }
     };

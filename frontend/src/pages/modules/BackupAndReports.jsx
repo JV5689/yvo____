@@ -4,8 +4,10 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
 import { useSearchParams } from 'react-router-dom';
+import { useUI } from '../../context/UIContext';
 
 export default function BackupAndReports() {
+    const { confirm } = useUI();
     const [searchParams] = useSearchParams();
     const queryCompanyId = searchParams.get('companyId');
 
@@ -123,7 +125,8 @@ export default function BackupAndReports() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this backup?")) return;
+        const ok = await confirm('Delete Backup', "Are you sure you want to delete this backup?", 'Delete');
+        if (!ok) return;
         try {
             await api.delete(`/backups/${id}`, { headers: { 'x-company-id': selectedCompanyId } });
             setBackups(backups.filter(b => b._id !== id));

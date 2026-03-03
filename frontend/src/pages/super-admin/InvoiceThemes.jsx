@@ -3,9 +3,11 @@ import { Plus, Trash2, Edit2, FileText, Check, X } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import TemplateDesigner from '../../components/invoice-builder/TemplateDesigner';
+import { useUI } from '../../context/UIContext';
 
 
 export default function InvoiceThemes() {
+    const { confirm } = useUI();
     const [templates, setTemplates] = useState([]);
     const [companyTemplates, setCompanyTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -104,7 +106,7 @@ export default function InvoiceThemes() {
             }
 
             if (currentTemplate) {
-                await api.patch(`/invoice-templates/${currentTemplate._id}`, payload);
+                await api.patch(`/invoice-templates/${currentTemplate.id}`, payload);
                 toast.success("Global template updated");
             } else {
                 await api.post('/invoice-templates', payload);
@@ -119,14 +121,24 @@ export default function InvoiceThemes() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this global template? It will be removed for all companies.")) return;
+        if (!id) {
+            toast.error('Template ID missing — cannot delete');
+            return;
+        }
+        const ok = await confirm(
+            'Delete Template',
+            'Are you sure you want to delete this global template? It will be removed for all companies.',
+            'Delete',
+            'danger'
+        );
+        if (!ok) return;
         try {
             await api.delete(`/invoice-templates/${id}`);
-            toast.success("Global template deleted");
+            toast.success('Global template deleted');
             fetchTemplates();
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to delete global template");
+            console.error('Delete error:', error?.response?.data || error);
+            toast.error(error?.response?.data?.message || 'Failed to delete global template');
         }
     };
 
@@ -174,7 +186,7 @@ export default function InvoiceThemes() {
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                             {templates.map(template => (
-                                <tr key={template._id} className="hover:bg-slate-50">
+                                <tr key={template.id} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 font-medium text-slate-800">
                                         <div className="flex items-center gap-2">
                                             <FileText size={16} className="text-indigo-500" />
@@ -191,7 +203,7 @@ export default function InvoiceThemes() {
                                                 <Edit2 size={16} />
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(template._id)}
+                                                onClick={() => handleDelete(template.id)}
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded bg-white border border-slate-200"
                                                 title="Delete Template"
                                             >
@@ -224,7 +236,7 @@ export default function InvoiceThemes() {
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                             {companyTemplates.map(template => (
-                                <tr key={template._id} className="hover:bg-slate-50">
+                                <tr key={template.id} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 font-medium text-slate-800">
                                         <div className="flex items-center gap-2">
                                             <FileText size={16} className="text-blue-500" />
@@ -238,7 +250,6 @@ export default function InvoiceThemes() {
                                         {new Date(template.createdAt).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        {/* Super Admin cannot edit company templates, only view */}
                                         <button
                                             onClick={() => handleOpenModal(template)}
                                             className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded hover:bg-slate-50 hover:text-indigo-600"
@@ -259,65 +270,68 @@ export default function InvoiceThemes() {
                         </tbody>
                     </table>
                 </div>
-            )}
+            )
+            }
 
             {/* Full Screen Editor */}
-            {showModal && (
-                <div className="fixed inset-0 bg-slate-50 z-50 flex flex-col overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm shrink-0">
-                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
-                            <FileText size={24} className="text-indigo-600" />
-                            {currentTemplate?.type === 'COMPANY'
-                                ? `Viewing Template: ${currentTemplate.name}`
-                                : currentTemplate ? 'Edit Global Template' : 'New Global Template'
-                            }
-                        </h2>
-                        <div className="flex items-center gap-4">
-                            <button
-                                type="button"
-                                onClick={() => setShowModal(false)}
-                                className="px-5 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                            >
-                                {currentTemplate?.type === 'COMPANY' ? 'Close' : 'Cancel'}
-                            </button>
-                            {/* Hide Save button for Company Templates for Super Admin */}
-                            {(!currentTemplate || currentTemplate.type !== 'COMPANY') && (
+            {
+                showModal && (
+                    <div className="fixed inset-0 bg-slate-50 z-50 flex flex-col overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm shrink-0">
+                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+                                <FileText size={24} className="text-indigo-600" />
+                                {currentTemplate?.type === 'COMPANY'
+                                    ? `Viewing Template: ${currentTemplate.name}`
+                                    : currentTemplate ? 'Edit Global Template' : 'New Global Template'
+                                }
+                            </h2>
+                            <div className="flex items-center gap-4">
                                 <button
                                     type="button"
-                                    onClick={handleSave}
-                                    className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm transition-colors"
+                                    onClick={() => setShowModal(false)}
+                                    className="px-5 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                                 >
-                                    <Check size={18} /> Save Template
+                                    {currentTemplate?.type === 'COMPANY' ? 'Close' : 'Cancel'}
                                 </button>
-                            )}
+                                {/* Hide Save button for Company Templates for Super Admin */}
+                                {(!currentTemplate || currentTemplate.type !== 'COMPANY') && (
+                                    <button
+                                        type="button"
+                                        onClick={handleSave}
+                                        className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm transition-colors"
+                                    >
+                                        <Check size={18} /> Save Template
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex-1 flex flex-col overflow-hidden bg-slate-100">
-                        <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center gap-6 shrink-0 z-10 shadow-sm">
-                            <div className="w-full max-w-md">
-                                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Template Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50"
-                                    placeholder="e.g., Standard Service Invoice"
-                                    value={templateName}
-                                    onChange={(e) => setTemplateName(e.target.value)}
+                        <div className="flex-1 flex flex-col overflow-hidden bg-slate-100">
+                            <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center gap-6 shrink-0 z-10 shadow-sm">
+                                <div className="w-full max-w-md">
+                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Template Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50"
+                                        placeholder="e.g., Standard Service Invoice"
+                                        value={templateName}
+                                        onChange={(e) => setTemplateName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex-1"></div>
+                            </div>
+
+                            <div className="flex-1 overflow-hidden flex flex-col">
+                                <TemplateDesigner
+                                    value={formData.layout}
+                                    onChange={(newLayout) => setFormData({ ...formData, layout: newLayout })}
                                 />
                             </div>
-                            <div className="flex-1"></div>
-                        </div>
-
-                        <div className="flex-1 overflow-hidden flex flex-col">
-                            <TemplateDesigner
-                                value={formData.layout}
-                                onChange={(newLayout) => setFormData({ ...formData, layout: newLayout })}
-                            />
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

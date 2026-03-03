@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, Users, Send, Trash2, UserPlus, X } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useUI } from '../../context/UIContext';
 
 export default function Broadcasts() {
+    const { confirm } = useUI();
     const [subTab, setSubTab] = useState('compose');
     const [groups, setGroups] = useState([]);
     const [allEmployees, setAllEmployees] = useState([]);
@@ -74,7 +76,8 @@ export default function Broadcasts() {
     };
 
     const handleDeleteGroup = async (groupId) => {
-        if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone.')) return;
+        const ok = await confirm('Delete Group', 'Are you sure you want to delete this group? This action cannot be undone.', 'Delete');
+        if (!ok) return;
 
         try {
             await api.delete(`/employees/groups/${groupId}`);
@@ -134,7 +137,8 @@ export default function Broadcasts() {
     const handleRemoveMember = async (memberId) => {
         if (!selectedGroup) return;
 
-        if (!window.confirm('Remove this member?')) return;
+        const ok = await confirm('Remove Member', 'Remove this member?', 'Remove');
+        if (!ok) return;
 
         const currentMembers = selectedGroup.members || [];
         const updatedMembers = currentMembers.filter(m => m._id !== memberId);

@@ -10,7 +10,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (employee?._id) {
+        if (employee?.id) {
             fetchEmployeeDetails();
         }
     }, [employee]);
@@ -22,7 +22,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
 
             // Fetch real salary records for this employee
             const salaryRes = await api.get('/employees/salary-records', {
-                params: { companyId, employeeId: employee._id }
+                params: { companyId, employeeId: employee.id }
             });
 
             const records = salaryRes.data.map((record, index) => {
@@ -48,7 +48,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
             // Fetch real leave stats
             // Get all leave requests for this employee
             const leaveRes = await api.get('/employees/leaves', {
-                params: { companyId, employeeId: employee._id }
+                params: { companyId, employeeId: employee.id }
             });
             const leaves = leaveRes.data;
 
@@ -278,7 +278,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                                         {upcomingLeaves.length > 0 ? (
                                             <div className="space-y-3">
                                                 {upcomingLeaves.map(leave => (
-                                                    <div key={leave._id} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm flex justify-between items-center">
+                                                    <div key={leave.id} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm flex justify-between items-center">
                                                         <div>
                                                             <p className="font-bold text-slate-800 text-sm">{leave.type}</p>
                                                             <p className="text-xs text-slate-500">

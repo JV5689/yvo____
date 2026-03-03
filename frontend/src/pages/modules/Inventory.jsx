@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Package, AlertTriangle, Search, Filter, X, Edit, Trash2, LayoutGrid, List, RotateCcw, Trash } from 'lucide-react';
 import api from '../../services/api';
+import { useUI } from '../../context/UIContext';
 
 export default function Inventory() {
+    const { confirm, alert, toast } = useUI();
     const [searchTerm, setSearchTerm] = useState('');
     const [inventory, setInventory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -49,7 +51,7 @@ export default function Inventory() {
 
     const handleOpenModal = (item = null) => {
         if (item) {
-            setCurrentId(item._id);
+            setCurrentId(item._id || item.id);
             setFormData({
                 sku: item.sku,
                 name: item.name,
@@ -110,46 +112,53 @@ export default function Inventory() {
 
             if (currentId) {
                 await api.patch(`/inventory/${currentId}`, data);
+                toast.success('Item updated successfully');
             } else {
                 await api.post('/inventory', data);
+                toast.success('Item created successfully');
             }
             fetchInventory();
             handleCloseModal();
         } catch (err) {
             console.error("Failed to save item", err);
-            alert("Failed to save item: " + (err.response?.data?.message || err.message));
+            alert("Error", "Failed to save item: " + (err.response?.data?.message || err.message), "error");
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to move this item to Trash?")) return;
+        const ok = await confirm('Move to Trash?', "Are you sure you want to move this item to Trash?", 'Move to Trash');
+        if (!ok) return;
         try {
             await api.delete(`/inventory/${id}`);
             fetchInventory();
+            toast.success('Item moved to trash');
         } catch (err) {
             console.error("Failed to delete item", err);
-            alert("Failed to delete item");
+            alert("Error", "Failed to delete item", "error");
         }
     };
 
     const handleRestore = async (id) => {
         try {
-            await api.post(`/inventory/${id}/restore`);
+            await api.patch(`/inventory/${id}/restore`);
             fetchInventory();
+            toast.success('Item restored');
         } catch (err) {
             console.error("Failed to restore item", err);
-            alert("Failed to restore item");
+            alert("Error", "Failed to restore item", "error");
         }
     };
 
     const handlePermanentDelete = async (id) => {
-        if (!window.confirm("Are you sure? This action cannot be undone and will permanently delete the item.")) return;
+        const ok = await confirm('Permanent Delete?', "Are you sure? This action cannot be undone.", 'Delete Forever');
+        if (!ok) return;
         try {
             await api.delete(`/inventory/${id}/permanent`);
             fetchInventory();
+            toast.success('Item deleted permanently');
         } catch (err) {
             console.error("Failed to permanently delete item", err);
-            alert("Failed to permanently delete item");
+            alert("Error", "Failed to permanently delete item", "error");
         }
     };
 

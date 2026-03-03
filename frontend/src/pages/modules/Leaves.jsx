@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { useUI } from '../../context/UIContext';
 
 export default function Leaves() {
-    const { alert, prompt } = useUI();
+    const { alert, prompt, toast } = useUI();
     const [leaves, setLeaves] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('Pending'); // Pending, Approved, Rejected, All
@@ -17,8 +17,6 @@ export default function Leaves() {
         try {
             const companyId = localStorage.getItem('companyId');
             const res = await api.get('/employees/leaves', { params: { companyId } });
-            console.log("Leaves API Response:", res.data); // DEBUG LOG
-
             if (Array.isArray(res.data)) {
                 setLeaves(res.data);
             } else {
@@ -34,23 +32,22 @@ export default function Leaves() {
     };
 
     const handleUpdateStatus = async (id, status, currentRemark) => {
-        // Optional: Prompt for remark on rejection
         let remark = currentRemark || '';
         if (status === 'Rejected') {
             const r = await prompt(
                 "Reject Leave",
                 "Reason for rejection (optional):",
                 "text",
-                "Reject",
-                "danger"
+                "Reject"
             );
-            if (r === null) return; // Cancelled
+            if (r === null) return;
             remark = r;
         }
 
         try {
             await api.patch(`/employees/leaves/${id}`, { status, remark });
-            fetchLeaves(); // Refresh
+            toast.success(`Leave processed: ${status}`);
+            fetchLeaves();
         } catch (err) {
             await alert('Status Update Failed', 'Failed to update leave status.', 'error');
         }
@@ -100,7 +97,7 @@ export default function Leaves() {
                             <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-500">No requests found.</td></tr>
                         )}
                         {filteredLeaves.map(leave => (
-                            <tr key={leave._id} className="hover:bg-slate-50">
+                            <tr key={leave._id || leave.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4 font-medium text-slate-900">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
@@ -127,13 +124,13 @@ export default function Leaves() {
                                     {leave.status === 'Pending' && (
                                         <div className="flex justify-center gap-2">
                                             <button
-                                                onClick={() => handleUpdateStatus(leave._id, 'Approved')}
+                                                onClick={() => handleUpdateStatus(leave._id || leave.id, 'Approved')}
                                                 className="p-1 text-green-600 hover:bg-green-50 rounded" title="Approve"
                                             >
                                                 <CheckCircle size={18} />
                                             </button>
                                             <button
-                                                onClick={() => handleUpdateStatus(leave._id, 'Rejected')}
+                                                onClick={() => handleUpdateStatus(leave._id || leave.id, 'Rejected')}
                                                 className="p-1 text-red-600 hover:bg-red-50 rounded" title="Reject"
                                             >
                                                 <XCircle size={18} />
@@ -158,7 +155,7 @@ const StatusBadge = ({ status }) => {
         Rejected: 'bg-red-100 text-red-800'
     };
     return (
-        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || styles.Pending}`}>
+        <span className={`px - 2.5 py - 0.5 rounded - full text - xs font - medium ${styles[status] || styles.Pending} `}>
             {status}
         </span>
     );
