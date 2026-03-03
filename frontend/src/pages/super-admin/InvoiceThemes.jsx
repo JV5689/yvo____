@@ -232,7 +232,7 @@ export default function InvoiceThemes() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-slate-600">
-                                        {template.companyId?.name || 'Unknown Company'}
+                                        {template.company?.name || 'No Company'}
                                     </td>
                                     <td className="px-6 py-4 text-slate-500 text-sm">
                                         {new Date(template.createdAt).toLocaleDateString()}

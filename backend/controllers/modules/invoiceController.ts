@@ -25,6 +25,24 @@ export const getInvoices = async (req: Request, res: Response) => {
     }
 };
 
+// Get next sequential invoice number for a company (e.g. INV-0042)
+export const getNextInvoiceNumber = async (req: Request, res: Response) => {
+    try {
+        const { companyId } = req.query;
+        if (!companyId) return res.status(400).json({ message: 'Company ID is required' });
+
+        // Count ALL invoices (including deleted) to avoid reusing numbers
+        const count = await prisma.invoice.count({
+            where: { companyId: String(companyId) }
+        });
+
+        const nextNumber = `INV-${String(count + 1).padStart(4, '0')}`;
+        res.status(200).json({ invoiceNumber: nextNumber });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // Get single invoice
 export const getInvoiceById = async (req: Request, res: Response) => {
     try {

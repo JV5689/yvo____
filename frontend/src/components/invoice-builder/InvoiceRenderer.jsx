@@ -374,12 +374,13 @@ export const renderBlock = (block, data, options = {}) => {
             return (
                 <div style={customStyle}>
                     <EditableText
-                        value={invoiceData.notes || 'Thank you for your business!'}
+                        value={typeof invoiceData.notes === 'string' ? invoiceData.notes : 'Thank you for your business!'}
                         onSave={(val) => onUpdateData('notes', val)}
                         className="whitespace-pre-wrap"
                     />
                 </div>
             );
+
 
         case 'CUSTOM_ATTRIBUTES':
             return (

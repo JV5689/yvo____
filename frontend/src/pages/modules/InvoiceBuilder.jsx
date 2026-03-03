@@ -33,7 +33,7 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
     const [sidebarTab, setSidebarTab] = useState('elements'); // 'elements', 'settings', 'data'
 
     const [invoiceData, setInvoiceData] = useState({
-        invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+        invoiceNumber: 'INV-LOADING',
         customerId: '',
         customerName: '',
         clientAddress: '',
@@ -97,27 +97,57 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                 setInventory(inventoryRes.data);
 
                 if (id) {
+                    // --- Loading existing invoice ---
                     const invRes = await api.get(`/invoices/${id}`);
                     const data = invRes.data;
-                    // Strip Prisma-only fields from items so editing works cleanly
                     const cleanedItems = (data.items || []).map(({ id: _id, invoiceId: _inv, customFields: _cf, invoice: _i, inventory: _inv2, ...rest }) => rest);
-                    setInvoiceData({ ...data, items: cleanedItems });
-                    if (data.layout) setActiveLayout(data.layout);
+                    setInvoiceData({
+                        invoiceNumber: data.invoiceNumber || '',
+                        customerId: data.customerId || '',
+                        customerName: data.customerName || '',
+                        clientAddress: data.clientAddress || '',
+                        gstNumber: data.gstNumber || '',
+                        date: data.date ? new Date(data.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+                        notes: typeof data.notes === 'string' ? data.notes : '',
+                        items: cleanedItems,
+                        status: data.status || 'DRAFT',
+                        taxRate: data.taxRate !== undefined ? data.taxRate : 10,
+                        customAttributes: Array.isArray(data.customAttributes) ? data.customAttributes : [],
+                        templateId: data.templateId || '',
+                    });
+                    const rawLayout = data.layout;
+                    const safeLayout = Array.isArray(rawLayout)
+                        ? rawLayout
+                        : typeof rawLayout === 'string'
+                            ? (() => { try { return JSON.parse(rawLayout); } catch { return []; } })()
+                            : [];
+                    if (safeLayout.length > 0) setActiveLayout(safeLayout);
                     if (data.templateId) setSelectedTemplateId(data.templateId);
-                    // Don't override startEditing prop here
-                } else if (templateIdFromUrl) {
-                    const temp = templatesRes.data.find(t => (t.id || t._id) === templateIdFromUrl);
-                    if (temp) {
-                        setActiveLayout(temp.layout);
-                        setSelectedTemplateId(temp.id || temp._id);
+                } else {
+                    // --- New invoice ---
+                    // Fetch sequential invoice number from backend
+                    try {
+                        const numRes = await api.get('/invoices/next-number', { params: { companyId } });
+                        setInvoiceData(prev => ({ ...prev, invoiceNumber: numRes.data.invoiceNumber }));
+                    } catch {
+                        setInvoiceData(prev => ({ ...prev, invoiceNumber: `INV-${Date.now().toString().slice(-6)}` }));
+                    }
+
+                    // Apply template layout
+                    if (templateIdFromUrl) {
+                        const temp = templatesRes.data.find(t => (t.id || t._id) === templateIdFromUrl);
+                        if (temp) {
+                            setActiveLayout(temp.layout);
+                            setSelectedTemplateId(temp.id || temp._id);
+                        } else {
+                            setActiveLayout(DEFAULT_LAYOUT);
+                        }
+                    } else if (templatesRes.data.length > 0) {
+                        setActiveLayout(templatesRes.data[0].layout);
+                        setSelectedTemplateId(templatesRes.data[0].id || templatesRes.data[0]._id);
                     } else {
                         setActiveLayout(DEFAULT_LAYOUT);
                     }
-                } else if (templatesRes.data.length > 0) {
-                    setActiveLayout(templatesRes.data[0].layout);
-                    setSelectedTemplateId(templatesRes.data[0].id || templatesRes.data[0]._id);
-                } else {
-                    setActiveLayout(DEFAULT_LAYOUT);
                 }
 
                 setLoading(false);
@@ -174,7 +204,7 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
 
             toast.success(`Invoice ${status === 'DRAFT' ? 'saved' : 'issued'} successfully!`);
             if (onClose) onClose();
-            else navigate('/dashboard/invoices');
+            else navigate('/dashboard/invoicing');
         } catch (err) {
             console.error("Save Error:", err);
             alert("Save Failed", err.response?.data?.message || err.message, "error");

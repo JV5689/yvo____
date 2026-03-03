@@ -326,9 +326,12 @@ export default function Invoicing() {
 
     const getStatusStyle = (status) => {
         switch (status) {
+            case 'ISSUED': return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
             case 'PAID': return 'bg-green-100 text-green-800 border border-green-200';
+            case 'DRAFT': return 'bg-slate-100 text-slate-700 border border-slate-200';
             case 'SENT': return 'bg-blue-100 text-blue-800 border border-blue-200';
             case 'OVERDUE': return 'bg-red-100 text-red-800 border border-red-200';
+            case 'CANCELLED': return 'bg-gray-100 text-gray-500 border border-gray-200';
             default: return 'bg-gray-100 text-gray-800 border border-gray-200';
         }
     };
@@ -463,9 +466,9 @@ export default function Invoicing() {
                                 <tbody className="divide-y divide-slate-200">
                                     {invoices.filter(filterInvoices).map((invoice) => (
                                         <tr
-                                            key={invoice._id}
+                                            key={invoice.id}
                                             className="hover:bg-slate-50 cursor-pointer"
-                                            onClick={() => handleSee(invoice._id)}
+                                            onClick={() => handleSee(invoice.id)}
                                         >
                                             <td className="px-6 py-4 text-sm font-medium text-indigo-600">{invoice.invoiceNumber}</td>
                                             <td className="px-6 py-4 text-sm text-slate-600">{invoice.customerName}</td>
@@ -491,12 +494,12 @@ export default function Invoicing() {
                                                         <button onClick={(e) => handleDownload(e, invoice)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition">
                                                             <Download size={18} />
                                                         </button>
-                                                        <button onClick={(e) => handleDelete(e, invoice._id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                                                        <button onClick={(e) => handleDelete(e, invoice.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
                                                             <Trash2 size={18} />
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <button onClick={(e) => handleRestore(e, invoice._id)} className="text-indigo-600 text-xs font-bold">
+                                                    <button onClick={(e) => handleRestore(e, invoice.id)} className="text-indigo-600 text-xs font-bold">
                                                         Restore
                                                     </button>
                                                 )}

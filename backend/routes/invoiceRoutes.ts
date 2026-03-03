@@ -7,9 +7,11 @@ const router = express.Router();
 router.use(checkSubscriptionStatus);
 
 router.get('/', invoiceController.getInvoices);
+router.get('/next-number', invoiceController.getNextInvoiceNumber);
 router.get('/:id', invoiceController.getInvoiceById);
 router.post('/', invoiceController.createInvoice);
 router.patch('/:id', invoiceController.updateInvoice);
 router.delete('/:id', invoiceController.deleteInvoice);
+
 
 export default router;
