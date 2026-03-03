@@ -207,9 +207,9 @@ export const updateCompanyStatus = async (req: Request, res: Response) => {
         const company = await prisma.company.update({
             where: { id: String(req.params.id) },
             data,
-            include: { plan: true }
+            include: { plan: { select: { name: true, code: true } } }
         });
-        res.json({ ...company, _id: company.id });
+        res.json({ ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -227,10 +227,10 @@ export const updateCompanyPlan = async (req: Request, res: Response) => {
         const company = await prisma.company.update({
             where: { id: String(req.params.id) },
             data: { planId: plan.id },
-            include: { plan: true }
+            include: { plan: { select: { name: true, code: true } } }
         });
 
-        res.json({ ...company, _id: company.id });
+        res.json({ ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

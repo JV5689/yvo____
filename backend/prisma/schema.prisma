@@ -231,9 +231,9 @@ model InventoryItem {
   description    String?  @db.Text
   quantityOnHand Float    @default(0)
   reorderLevel   Float    @default(5)
-  costPrice      Float?
   sellingPrice   Float?
   category       String?
+  image          String?  @db.Text
   lastModifiedAt DateTime @default(now())
   isDeleted      Boolean  @default(false)
 

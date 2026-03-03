@@ -240,7 +240,7 @@ export default function Companies() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                            {c.planId?.name || 'Unknown Plan'}
+                                            {c.plan?.name || 'Unknown Plan'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
