@@ -1,6 +1,5 @@
-import { BackupJob } from '../models/Global/BackupJob.js';
 import { generateBackup } from '../services/backupService.js';
-import { AuditLog } from '../models/Global/AuditLog.js';
+import { prisma } from '../src/config/db.js';
 import path from 'path';
 import fs from 'fs';
 export const createBackup = async (req, res) => {
@@ -17,22 +16,26 @@ export const createBackup = async (req, res) => {
             return res.status(400).json({ message: "Company ID is required" });
         }
         const backupId = `BK-${Date.now()}`;
-        const job = new BackupJob({
-            companyId,
-            createdBy: userId,
-            backupId,
-            filters,
-            status: 'QUEUED'
+        const job = await prisma.backupJob.create({
+            data: {
+                companyId,
+                createdBy: userId,
+                backupId,
+                filters,
+                status: 'QUEUED',
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            }
         });
-        await job.save();
         // Start background process
-        generateBackup(job._id.toString()).catch(err => console.error("Async backup failed:", err));
+        generateBackup(job.id).catch(err => console.error("Async backup failed:", err));
         // Log action
-        await AuditLog.create({
-            companyId,
-            actorId: userId,
-            action: 'BACKUP_CREATED',
-            details: { backupId, filters }
+        await prisma.auditLog.create({
+            data: {
+                companyId,
+                actorId: userId,
+                action: 'BACKUP_CREATED',
+                details: { backupId, filters }
+            }
         });
         res.status(201).json(job);
     }
@@ -44,9 +47,11 @@ export const createBackup = async (req, res) => {
 export const getBackups = async (req, res) => {
     try {
         const { companyId } = req.user;
-        const backups = await BackupJob.find({ companyId })
-            .sort({ createdAt: -1 })
-            .limit(20);
+        const backups = await prisma.backupJob.findMany({
+            where: { companyId },
+            orderBy: { createdAt: 'desc' },
+            take: 20
+        });
         res.json(backups);
     }
     catch (error) {
@@ -56,10 +61,10 @@ export const getBackups = async (req, res) => {
 export const getBackupStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const job = await BackupJob.findById(id);
+        const job = await prisma.backupJob.findUnique({ where: { id: String(id) } });
         if (!job)
             return res.status(404).json({ message: "Backup job not found" });
-        if (job.companyId.toString() !== req.user.companyId?.toString()) {
+        if (job.companyId !== req.user.companyId) {
             return res.status(403).json({ message: "Access denied" });
         }
         res.json(job);
@@ -71,24 +76,26 @@ export const getBackupStatus = async (req, res) => {
 export const downloadBackup = async (req, res) => {
     try {
         const { id } = req.params;
-        const job = await BackupJob.findById(id);
+        const job = await prisma.backupJob.findUnique({ where: { id: String(id) } });
         if (!job || job.status !== 'READY') {
             return res.status(404).json({ message: "Backup file not found or not ready" });
         }
-        if (job.companyId.toString() !== req.user.companyId?.toString()) {
+        if (job.companyId !== req.user.companyId) {
             return res.status(403).json({ message: "Access denied" });
         }
-        if (!fs.existsSync(job.filePath)) {
+        if (!job.filePath || !fs.existsSync(job.filePath)) {
             return res.status(404).json({ message: "File no longer exists on server" });
         }
         // Record Audit Log
-        await AuditLog.create({
-            companyId: job.companyId,
-            actorId: req.user.userId,
-            action: 'BACKUP_DOWNLOADED',
-            targetId: job._id,
-            targetModel: 'BackupJob',
-            details: { backupId: job.backupId }
+        await prisma.auditLog.create({
+            data: {
+                companyId: job.companyId,
+                actorId: req.user.userId,
+                action: 'BACKUP_DOWNLOADED',
+                targetId: job.id,
+                targetModel: 'BackupJob',
+                details: { backupId: job.backupId }
+            }
         });
         res.download(job.filePath, path.basename(job.filePath));
     }
@@ -99,22 +106,24 @@ export const downloadBackup = async (req, res) => {
 export const deleteBackup = async (req, res) => {
     try {
         const { id } = req.params;
-        const job = await BackupJob.findById(id);
+        const job = await prisma.backupJob.findUnique({ where: { id: String(id) } });
         if (!job)
             return res.status(404).json({ message: "Backup not found" });
-        if (job.companyId.toString() !== req.user.companyId?.toString()) {
+        if (job.companyId !== req.user.companyId) {
             return res.status(403).json({ message: "Access denied" });
         }
         // Delete file if exists
         if (job.filePath && fs.existsSync(job.filePath)) {
             fs.unlinkSync(job.filePath);
         }
-        await BackupJob.findByIdAndDelete(id);
-        await AuditLog.create({
-            companyId: job.companyId,
-            actorId: req.user.userId,
-            action: 'BACKUP_DELETED',
-            details: { backupId: job.backupId }
+        await prisma.backupJob.delete({ where: { id: String(id) } });
+        await prisma.auditLog.create({
+            data: {
+                companyId: job.companyId,
+                actorId: req.user.userId,
+                action: 'BACKUP_DELETED',
+                details: { backupId: job.backupId }
+            }
         });
         res.json({ message: "Backup deleted successfully" });
     }

@@ -75,7 +75,7 @@ export const getCompanies = async (req: Request, res: Response) => {
         const total = await prisma.company.count({ where });
 
         res.json({
-            companies,
+            companies: companies.map((c: any) => ({ ...c, _id: c.id, plan: c.plan ? { ...c.plan, _id: c.planId } : null })),
             total,
             pages: Math.ceil(total / Number(limit))
         });
@@ -88,7 +88,7 @@ export const getCompanies = async (req: Request, res: Response) => {
 export const getCompanyById = async (req: Request, res: Response) => {
     try {
         const company = await prisma.company.findUnique({
-            where: { id: req.params.id },
+            where: { id: String(req.params.id) },
             include: { plan: true }
         });
         if (!company) return res.status(404).json({ message: 'Company not found' });
@@ -110,7 +110,10 @@ export const getCompanyById = async (req: Request, res: Response) => {
             }
         });
 
-        res.json({ company, admins });
+        res.json({
+            company: { ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null },
+            admins: admins.map((a: any) => ({ ...a, _id: a.id }))
+        });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -180,7 +183,11 @@ export const createCompany = async (req: Request, res: Response) => {
             return { company, user };
         });
 
-        res.status(201).json(result);
+        res.status(201).json({
+            ...result,
+            company: { ...result.company, _id: result.company.id },
+            user: { ...result.user, _id: result.user.id }
+        });
     } catch (error: any) {
         console.error("Create Company Error:", error);
         res.status(500).json({ message: error.message });
@@ -198,11 +205,11 @@ export const updateCompanyStatus = async (req: Request, res: Response) => {
         }
 
         const company = await prisma.company.update({
-            where: { id: req.params.id },
+            where: { id: String(req.params.id) },
             data,
             include: { plan: true }
         });
-        res.json(company);
+        res.json({ ...company, _id: company.id });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -218,12 +225,12 @@ export const updateCompanyPlan = async (req: Request, res: Response) => {
         if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
         const company = await prisma.company.update({
-            where: { id: req.params.id },
+            where: { id: String(req.params.id) },
             data: { planId: plan.id },
             include: { plan: true }
         });
 
-        res.json(company);
+        res.json({ ...company, _id: company.id });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -235,7 +242,7 @@ export const updateCompanyFlags = async (req: Request, res: Response) => {
         const { flags, replace } = req.body;
         console.log(`[SuperAdmin] Updating flags for company ${req.params.id}:`, flags);
 
-        const company = await prisma.company.findUnique({ where: { id: req.params.id } });
+        const company = await prisma.company.findUnique({ where: { id: String(req.params.id) } });
         if (!company) return res.status(404).json({ message: 'Company not found' });
 
         let newFlags: any;
@@ -247,11 +254,11 @@ export const updateCompanyFlags = async (req: Request, res: Response) => {
         }
 
         const updatedCompany = await prisma.company.update({
-            where: { id: req.params.id },
+            where: { id: String(req.params.id) },
             data: { featureFlags: newFlags }
         });
 
-        res.json(updatedCompany);
+        res.json({ ...updatedCompany, _id: updatedCompany.id });
     } catch (error: any) {
         console.error("[SuperAdmin] Update Flags Error:", error);
         res.status(500).json({ message: error.message });
@@ -262,7 +269,7 @@ export const updateCompanyFlags = async (req: Request, res: Response) => {
 export const deleteCompany = async (req: Request, res: Response) => {
     try {
         const companyId = req.params.id;
-        const company = await prisma.company.findUnique({ where: { id: companyId } });
+        const company = await prisma.company.findUnique({ where: { id: String(companyId) } });
         if (!company) return res.status(404).json({ message: 'Company not found' });
 
         console.log(`[DeleteCompany] Starting full cleanup for company: ${company.name} (${companyId})`);
@@ -271,7 +278,7 @@ export const deleteCompany = async (req: Request, res: Response) => {
         // Let's check schema.prisma just to be sure.
 
         // Final Delete the Company (Cascades will trigger)
-        await prisma.company.delete({ where: { id: companyId } });
+        await prisma.company.delete({ where: { id: String(companyId) } });
 
         // Special cleanup for users who ONLY belong to this company and are not super admins
         // This logic is a bit more complex with Prisma as it's not a direct cascade.

@@ -1,7 +1,5 @@
 import express from "express";
-import FeatureFlag from "../models/FeatureFlag.js";
-import Subscription from "../models/Subscription.js";
-import Plan from "../models/Plan.js";
+import { prisma } from "../config/db.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 const router = express.Router();
 /**
@@ -11,43 +9,47 @@ const router = express.Router();
 router.get("/config", requireAuth, async (req, res) => {
     try {
         const { companyId, role } = req.user;
-        // Super admin has no company config
+        // 1. Fetch Global Flags from FeatureFlag table
+        const globalFlag = await prisma.featureFlag.findFirst({
+            where: { scope: "global", isEnabled: true }
+        });
+        const globalValue = globalFlag?.value?.flags || {};
+        // Super admin has no company config, just return global
         if (!companyId && role === "SUPER_ADMIN") {
-            const global = await FeatureFlag.findOne({ scope: "GLOBAL", scopeId: null });
             return res.json({
                 companyId: null,
                 plan: null,
                 limits: null,
-                flags: global?.flags || {},
+                flags: globalValue,
             });
         }
         if (!companyId)
             return res.status(400).json({ message: "companyId missing in token" });
-        const sub = await Subscription.findOne({ companyId, status: "ACTIVE" });
-        let plan = null;
-        let planIdStr = null;
-        if (sub) {
-            plan = await Plan.findById(sub.planId);
-            planIdStr = plan?._id?.toString() || null;
+        // 2. Fetch Company with its Plan
+        const company = await prisma.company.findUnique({
+            where: { id: companyId },
+            include: { plan: true }
+        });
+        if (!company) {
+            return res.status(404).json({ message: "Company not found" });
         }
-        const global = await FeatureFlag.findOne({ scope: "GLOBAL", scopeId: null });
-        const planFlags = planIdStr ? await FeatureFlag.findOne({ scope: "PLAN", scopeId: planIdStr }) : null;
-        const companyFlags = await FeatureFlag.findOne({ scope: "COMPANY", scopeId: companyId });
-        // Merge priority: global < plan default < plan override < company override
+        const plan = company.plan;
+        // Merge priority: global < plan default < company override
+        // (Note: 'plan override' from previous schema is effectively merged into plan.defaultFlags in new schema)
         const mergedFlags = {
-            ...(global?.flags || {}),
-            ...(plan?.defaultFeatures || {}),
-            ...(planFlags?.flags || {}),
-            ...(companyFlags?.flags || {}),
+            ...globalValue,
+            ...(plan?.defaultFlags || {}),
+            ...(company.featureFlags || {}),
         };
         res.json({
             companyId,
-            plan: plan ? { id: plan._id, name: plan.name } : null,
-            limits: plan?.limits || null,
+            plan: plan ? { id: plan.id, name: plan.name, code: plan.code } : null,
+            limits: plan?.defaultLimits || null,
             flags: mergedFlags,
         });
     }
     catch (e) {
+        console.error("Config Error:", e);
         res.status(500).json({ message: "Server error", error: e.message });
     }
 });

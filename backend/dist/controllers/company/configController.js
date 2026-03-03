@@ -1,5 +1,4 @@
-import { Company } from '../../models/Global/Company.js';
-import { FeatureFlag } from '../../models/Global/FeatureFlag.js';
+import { prisma } from '../../src/config/db.js';
 // GET /company/config
 // Returns the effective configuration for the logged-in user's company
 export const getConfig = async (req, res) => {
@@ -10,21 +9,24 @@ export const getConfig = async (req, res) => {
         if (!companyId) {
             return res.status(400).json({ message: 'Company Configuration requires company context' });
         }
-        const company = await Company.findById(companyId).populate('planId');
+        const company = await prisma.company.findUnique({
+            where: { id: String(companyId) },
+            include: { plan: true }
+        });
         if (!company) {
             return res.status(404).json({ message: 'Company not found' });
         }
         // 1. Fetch Global Flags
-        const globalFlagsDocs = await FeatureFlag.find({ isEnabled: true });
+        const globalFlagsDocs = await prisma.featureFlag.findMany({ where: { isEnabled: true } });
         const globalFlags = {};
         globalFlagsDocs.forEach(f => {
             globalFlags[f.key] = f.value;
         });
         // 2. Plan Defaults
-        const plan = company.planId;
-        const planDefaults = plan.defaultFlags ? Object.fromEntries(plan.defaultFlags) : {};
+        const plan = company.plan;
+        const planDefaults = plan.defaultFlags || {};
         // 3. Company Overrides
-        const companyOverrides = company.featureFlags ? Object.fromEntries(company.featureFlags) : {};
+        const companyOverrides = company.featureFlags || {};
         // 4. Merge Logic (Last one wins)
         console.log(`[Config] Plan Defaults (${plan.name}):`, JSON.stringify(planDefaults));
         console.log(`[Config] Company Overrides (${company.name}):`, JSON.stringify(companyOverrides));
@@ -38,7 +40,7 @@ export const getConfig = async (req, res) => {
         // Only lock if status is explicitly expired, suspended, or inactive
         const isAppLocked = company.subscriptionStatus !== 'active' && company.subscriptionStatus !== 'trial';
         if (isAppLocked) {
-            console.log(`[Config] Company ${company.name} (${company._id}) is ${company.subscriptionStatus}. Locking all features.`);
+            console.log(`[Config] Company ${company.name} (${company.id}) is ${company.subscriptionStatus}. Locking all features.`);
             // Force all flags to false
             Object.keys(effectiveFlags).forEach(key => effectiveFlags[key] = false);
         }
@@ -49,7 +51,7 @@ export const getConfig = async (req, res) => {
         };
         const responseData = {
             company: {
-                id: company._id,
+                id: company.id,
                 name: company.name,
                 plan: plan.name,
                 subscriptionStatus: company.subscriptionStatus, // Return actual status
@@ -93,8 +95,10 @@ export const updateCompany = async (req, res) => {
         // const company = await Company.findByIdAndUpdate(id, updates, { new: true });
         // Ensure we don't accidentally wipe feature flags if not passed
         // For now, simple update
-        const Company = (await import('../../models/Global/Company.js')).Company;
-        const company = await Company.findByIdAndUpdate(id, updates, { new: true });
+        const company = await prisma.company.update({
+            where: { id: String(id) },
+            data: updates
+        });
         res.status(200).json(company);
     }
     catch (error) {
@@ -104,8 +108,7 @@ export const updateCompany = async (req, res) => {
 export const verifyPassword = async (req, res) => {
     try {
         const { companyId, password } = req.body;
-        const Company = (await import('../../models/Global/Company.js')).Company;
-        const company = await Company.findById(companyId);
+        const company = await prisma.company.findUnique({ where: { id: companyId } });
         if (!company)
             return res.status(404).json({ message: 'Company not found' });
         // Direct comparison for this feature
@@ -122,9 +125,18 @@ export const addInvoiceAttribute = async (req, res) => {
         if (!companyId || !attribute) {
             return res.status(400).json({ message: 'companyId and attribute are required' });
         }
-        const Company = (await import('../../models/Global/Company.js')).Company;
-        const company = await Company.findByIdAndUpdate(companyId, { $addToSet: { invoiceAttributes: attribute } }, { new: true });
-        res.json({ invoiceAttributes: company?.invoiceAttributes || [] });
+        const currentCompany = await prisma.company.findUnique({ where: { id: companyId } });
+        const attrs = Array.isArray(currentCompany?.invoiceAttributes)
+            ? currentCompany.invoiceAttributes
+            : [];
+        if (!attrs.includes(attribute)) {
+            attrs.push(attribute);
+        }
+        const company = await prisma.company.update({
+            where: { id: String(companyId) },
+            data: { invoiceAttributes: attrs }
+        });
+        res.json({ invoiceAttributes: company.invoiceAttributes || [] });
     }
     catch (error) {
         res.status(500).json({ message: error.message });

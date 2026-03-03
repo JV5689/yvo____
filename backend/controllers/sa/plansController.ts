@@ -7,7 +7,7 @@ export const getPlans = async (req: Request, res: Response) => {
         const plans = await prisma.plan.findMany({
             where: { isArchived: false }
         });
-        res.json(plans);
+        res.json(plans.map((p: any) => ({ ...p, _id: p.id })));
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -24,7 +24,7 @@ export const createPlan = async (req: Request, res: Response) => {
                 defaultLimits: defaultLimits || {}
             }
         });
-        res.status(201).json(plan);
+        res.status(201).json({ ...plan, _id: plan.id });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -36,7 +36,7 @@ export const updatePlan = async (req: Request, res: Response) => {
         const { defaultFlags, defaultLimits, ...otherUpdates } = req.body;
         console.log(`[SuperAdmin] Updating plan ${req.params.id}:`, req.body);
 
-        let plan = await prisma.plan.findUnique({ where: { id: req.params.id } });
+        let plan = await prisma.plan.findUnique({ where: { id: String(req.params.id) } });
         if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
         const updatedData: any = { ...otherUpdates };
@@ -56,7 +56,7 @@ export const updatePlan = async (req: Request, res: Response) => {
 
         // 1. SAVE WITH CONFIRMATION
         plan = await prisma.plan.update({
-            where: { id: req.params.id },
+            where: { id: String(req.params.id) },
             data: updatedData
         });
 
@@ -97,7 +97,7 @@ export const updatePlan = async (req: Request, res: Response) => {
             }
         }
 
-        res.json(plan);
+        res.json({ ...plan, _id: plan.id });
     } catch (error: any) {
         console.error("[SuperAdmin] Update Plan Error:", error);
         res.status(500).json({ message: error.message, stack: error.stack });
@@ -108,7 +108,7 @@ export const updatePlan = async (req: Request, res: Response) => {
 export const archivePlan = async (req: Request, res: Response) => {
     try {
         const plan = await prisma.plan.update({
-            where: { id: req.params.id },
+            where: { id: String(req.params.id) },
             data: { isArchived: true }
         });
         res.json({ message: 'Plan archived successfully', plan });

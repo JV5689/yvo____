@@ -1,4 +1,4 @@
-import { Company } from '../models/Global/Company.js';
+import { prisma } from '../src/config/db.js';
 export const checkSubscriptionStatus = async (req, res, next) => {
     try {
         // 1. Identify Company
@@ -12,7 +12,9 @@ export const checkSubscriptionStatus = async (req, res, next) => {
             return next();
         }
         // 2. Fetch Company
-        const company = await Company.findById(companyId);
+        const company = await prisma.company.findUnique({
+            where: { id: String(companyId) }
+        });
         if (!company) {
             return res.status(404).json({ message: 'Company not found' });
         }

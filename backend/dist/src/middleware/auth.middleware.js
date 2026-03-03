@@ -1,5 +1,5 @@
 import { verifyToken } from "../utils/jwt.js";
-import { User } from "../../models/Global/User.js";
+import { prisma } from "../config/db.js";
 export async function requireAuth(req, res, next) {
     try {
         const header = req.headers.authorization || "";
@@ -13,11 +13,14 @@ export async function requireAuth(req, res, next) {
         let role = decoded.role;
         // If role is missing (regular token), we must fetch it from the DB
         if (!role && userId && userId !== 'admin') {
-            const user = await User.findById(userId);
+            const user = await prisma.user.findUnique({
+                where: { id: String(userId) },
+                include: { memberships: true }
+            });
             if (user) {
                 // If we have a companyId, find membership for it
                 if (companyId) {
-                    const membership = user.memberships.find(m => m.companyId?.toString() === companyId);
+                    const membership = user.memberships.find(m => m.companyId === companyId);
                     if (membership) {
                         role = membership.role;
                     }

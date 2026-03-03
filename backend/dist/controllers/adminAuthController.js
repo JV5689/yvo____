@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/Global/User.js';
+import { prisma } from '../src/config/db.js';
 const generateToken = (payload) => {
     return jwt.sign(payload, process.env.JWT_SECRET || 'dev_secret', {
         expiresIn: '30d',
@@ -35,7 +35,12 @@ export const loginAdmin = async (req, res) => {
                 },
             });
         }
-        const user = await User.findOne({ email: username });
+        const user = await prisma.user.findUnique({
+            where: { email: username },
+            include: {
+                memberships: true,
+            },
+        });
         if (!user || !user.passwordHash) {
             return res.status(401).json({ message: 'Invalid admin credentials.' });
         }
@@ -49,7 +54,7 @@ export const loginAdmin = async (req, res) => {
         }
         const primaryMembership = user.memberships?.[0];
         const token = generateToken({
-            userId: user._id,
+            userId: user.id,
             role,
             companyId: primaryMembership?.companyId || null,
         });

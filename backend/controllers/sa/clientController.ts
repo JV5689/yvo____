@@ -7,7 +7,7 @@ export const getClients = async (req: Request, res: Response) => {
         const clients = await prisma.clientLogo.findMany({
             orderBy: { createdAt: 'desc' }
         });
-        res.status(200).json(clients);
+        res.status(200).json(clients.map((c: any) => ({ ...c, _id: c.id })));
     } catch (error: any) {
         console.error('Error fetching clients:', error);
         res.status(500).json({ message: 'Failed to fetch clients' });
@@ -27,7 +27,7 @@ export const addClient = async (req: Request, res: Response) => {
             data: { name, logoUrl }
         });
 
-        res.status(201).json(newClient);
+        res.status(201).json({ ...newClient, _id: newClient.id });
     } catch (error: any) {
         console.error('Error adding client:', error);
         res.status(500).json({ message: 'Failed to add client' });
@@ -39,7 +39,7 @@ export const deleteClient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         await prisma.clientLogo.delete({
-            where: { id: id }
+            where: { id: String(id) }
         });
         res.status(200).json({ message: 'Client deleted successfully' });
     } catch (error: any) {

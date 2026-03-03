@@ -1,11 +1,5 @@
-// ... existing imports
-import { BroadcastGroup } from '../../models/Modules/BroadcastGroup.js';
-import { BroadcastMessage } from '../../models/Modules/BroadcastMessage.js';
-import { SalaryRecord } from '../../models/Modules/SalaryRecord.js';
-import { Expense } from '../../models/Modules/Expense.js';
+import { prisma } from '../../src/config/db.js';
 import bcrypt from 'bcryptjs';
-import { Employee } from '../../models/Modules/Employee.js';
-import { LeaveRequest } from '../../models/Modules/LeaveRequest.js';
 // ... existing imports
 import nodemailer from 'nodemailer';
 // --- Salary Records ---
@@ -17,9 +11,11 @@ export const getSalaryRecords = async (req, res) => {
         const query = { companyId };
         if (employeeId)
             query.employeeId = employeeId;
-        const records = await SalaryRecord.find(query)
-            .populate('employeeId', 'firstName lastName position')
-            .sort({ paymentDate: -1 });
+        const records = await prisma.salaryRecord.findMany({
+            where: query,
+            include: { employee: { select: { firstName: true, lastName: true, position: true } } },
+            orderBy: { paymentDate: 'desc' }
+        });
         res.status(200).json(records);
     }
     catch (error) {
@@ -29,19 +25,21 @@ export const getSalaryRecords = async (req, res) => {
 export const deleteSalaryRecord = async (req, res) => {
     try {
         const { id } = req.params;
-        const record = await SalaryRecord.findById(id);
+        const record = await prisma.salaryRecord.findUnique({ where: { id: String(id) } });
         if (!record)
             return res.status(404).json({ message: 'Salary record not found' });
         // Delete associated expense if it exists (matching amount and date approx?)
         // Ideally we should have stored expenseId in SalaryRecord.
         // For now, we'll try to find a matching expense.
-        await Expense.findOneAndDelete({
-            companyId: record.companyId,
-            category: 'Payroll',
-            amount: record.amount,
-            date: record.paymentDate
+        await prisma.expense.deleteMany({
+            where: {
+                companyId: record.companyId,
+                category: 'Payroll',
+                amount: Number(record.amount),
+                date: record.paymentDate
+            }
         });
-        await SalaryRecord.findByIdAndDelete(id);
+        await prisma.salaryRecord.delete({ where: { id: String(id) } });
         res.status(200).json({ message: 'Salary record deleted' });
     }
     catch (error) {
@@ -52,12 +50,18 @@ export const deleteSalaryRecord = async (req, res) => {
 export const createBroadcastGroup = async (req, res) => {
     try {
         const { companyId, name, memberIds } = req.body;
-        const newGroup = new BroadcastGroup({
-            companyId,
-            name,
-            members: memberIds
+        // In prisma, map memberIds array to connect objects
+        const newGroup = await prisma.broadcastGroup.create({
+            data: {
+                companyId: String(companyId),
+                name,
+                members: {
+                    create: (memberIds || []).map((empId) => ({
+                        employeeId: empId
+                    }))
+                }
+            }
         });
-        await newGroup.save();
         res.status(201).json(newGroup);
     }
     catch (error) {
@@ -67,7 +71,14 @@ export const createBroadcastGroup = async (req, res) => {
 export const getBroadcastGroups = async (req, res) => {
     try {
         const { companyId } = req.query;
-        const groups = await BroadcastGroup.find({ companyId }).populate('members', 'firstName lastName');
+        const groups = await prisma.broadcastGroup.findMany({
+            where: { companyId: String(companyId) },
+            include: {
+                members: {
+                    include: { employee: { select: { firstName: true, lastName: true } } }
+                }
+            }
+        });
         res.json(groups);
     }
     catch (error) {
@@ -78,7 +89,23 @@ export const updateBroadcastGroup = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, members } = req.body;
-        const group = await BroadcastGroup.findByIdAndUpdate(id, { name, members }, { new: true }).populate('members', 'firstName lastName');
+        // In Prisma, we must delete current members and recreate them or use complex upserts.
+        // Simplest is delete all group memberships and recreate.
+        const group = await prisma.broadcastGroup.update({
+            where: { id: String(id) },
+            data: {
+                name,
+                members: {
+                    deleteMany: {},
+                    create: (members || []).map((empId) => ({ employeeId: empId }))
+                }
+            },
+            include: {
+                members: {
+                    include: { employee: { select: { firstName: true, lastName: true } } }
+                }
+            }
+        });
         if (!group)
             return res.status(404).json({ message: 'Group not found' });
         res.json(group);
@@ -90,8 +117,8 @@ export const updateBroadcastGroup = async (req, res) => {
 export const deleteBroadcastGroup = async (req, res) => {
     try {
         const { id } = req.params;
-        await BroadcastMessage.deleteMany({ groupId: id });
-        await BroadcastGroup.findByIdAndDelete(id);
+        await prisma.broadcastMessage.deleteMany({ where: { groupId: String(id) } });
+        await prisma.broadcastGroup.delete({ where: { id: String(id) } });
         res.json({ message: 'Group deleted successfully' });
     }
     catch (error) {
@@ -101,15 +128,16 @@ export const deleteBroadcastGroup = async (req, res) => {
 export const sendBroadcastMessage = async (req, res) => {
     try {
         const { companyId, senderId, groupId, targetAll, content, attachments } = req.body;
-        const message = new BroadcastMessage({
-            companyId,
-            senderId, // User ID of Admin
-            groupId: targetAll ? null : groupId,
-            targetAll,
-            content,
-            attachments
+        const message = await prisma.broadcastMessage.create({
+            data: {
+                companyId: String(companyId),
+                senderId: String(senderId), // User ID of Admin
+                groupId: targetAll ? null : String(groupId),
+                targetAll,
+                content,
+                attachments: attachments || []
+            }
         });
-        await message.save();
         res.status(201).json(message);
     }
     catch (error) {
@@ -123,14 +151,17 @@ export const getEmployees = async (req, res) => {
         const { companyId, isDeleted } = req.query;
         if (!companyId)
             return res.status(400).json({ message: 'Company ID is required' });
-        const filter = { companyId };
+        const filter = { companyId: String(companyId) };
         if (isDeleted === 'true') {
             filter.isDeleted = true;
         }
         else {
             filter.isDeleted = false; // Default behavior
         }
-        const employees = await Employee.find(filter).sort({ createdAt: -1 });
+        const employees = await prisma.employee.findMany({
+            where: filter,
+            orderBy: { createdAt: 'desc' }
+        });
         res.status(200).json(employees);
     }
     catch (error) {
@@ -141,7 +172,7 @@ export const getEmployees = async (req, res) => {
 export const getEmployeeById = async (req, res) => {
     try {
         const { id } = req.params;
-        const employee = await Employee.findById(id);
+        const employee = await prisma.employee.findUnique({ where: { id: String(id) } });
         if (!employee) {
             return res.status(404).json({ message: 'Employee not found' });
         }
@@ -161,24 +192,25 @@ export const createEmployee = async (req, res) => {
         }
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newEmployee = new Employee({
-            companyId,
-            firstName,
-            lastName,
-            email,
-            phone,
-            password: hashedPassword,
-            position,
-            department,
-            salary,
-            status,
-            dateHired,
-            category: category || 'General',
-            avatar,
-            freeLeavesPerMonth: freeLeavesPerMonth !== undefined ? freeLeavesPerMonth : 1,
-            workingDaysPerWeek: workingDaysPerWeek || 6
+        const newEmployee = await prisma.employee.create({
+            data: {
+                companyId: String(companyId),
+                firstName,
+                lastName,
+                email,
+                phone,
+                password: hashedPassword,
+                position,
+                department,
+                salary: Number(salary),
+                status,
+                dateHired: dateHired ? new Date(dateHired) : new Date(),
+                category: category || 'General',
+                avatar,
+                freeLeavesPerMonth: freeLeavesPerMonth !== undefined ? Number(freeLeavesPerMonth) : 1,
+                workingDaysPerWeek: workingDaysPerWeek ? Number(workingDaysPerWeek) : 6
+            }
         });
-        await newEmployee.save();
         res.status(201).json(newEmployee);
     }
     catch (error) {
@@ -195,20 +227,26 @@ export const updateEmployee = async (req, res) => {
         if (updates.password) {
             updates.password = await bcrypt.hash(updates.password, 10);
         }
-        const currentEmployee = await Employee.findById(id);
+        const currentEmployee = await prisma.employee.findUnique({ where: { id: String(id) } }); // Changed from Employee.findById
         if (!currentEmployee) {
             return res.status(404).json({ message: 'Employee not found' });
         }
         // Check if salary is being updated and is different
+        let newSalaryHistory = undefined;
         if (updates.salary && Number(updates.salary) !== currentEmployee.salary) {
-            updates.$push = {
-                salaryHistory: {
-                    amount: currentEmployee.salary,
-                    changeDate: new Date()
-                }
+            newSalaryHistory = {
+                amount: currentEmployee.salary,
+                changeDate: new Date()
             };
         }
-        const employee = await Employee.findByIdAndUpdate(id, updates, { new: true });
+        const updateData = { ...updates };
+        if (newSalaryHistory) {
+            updateData.salaryHistory = { create: newSalaryHistory };
+        }
+        const employee = await prisma.employee.update({
+            where: { id: String(id) },
+            data: updateData
+        });
         res.status(200).json(employee);
     }
     catch (error) {
@@ -220,7 +258,7 @@ export const deleteEmployee = async (req, res) => {
     try {
         const { id } = req.params;
         // Find the employee first to get current data
-        const employeeToDelete = await Employee.findById(id);
+        const employeeToDelete = await prisma.employee.findUnique({ where: { id: String(id) } });
         if (!employeeToDelete) {
             return res.status(404).json({ message: 'Employee not found' });
         }
@@ -228,14 +266,23 @@ export const deleteEmployee = async (req, res) => {
         const timestamp = Date.now();
         const mangledEmail = `${employeeToDelete.email}-deleted-${timestamp}`;
         const mangledPhone = `${employeeToDelete.phone}-deleted-${timestamp}`;
-        const employee = await Employee.findByIdAndUpdate(id, {
-            isDeleted: true,
-            email: mangledEmail,
-            phone: mangledPhone,
-            status: 'Terminated'
-        }, { new: true });
+        const employee = await prisma.employee.update({
+            where: { id: String(id) },
+            data: {
+                isDeleted: true,
+                email: mangledEmail,
+                phone: mangledPhone,
+                status: 'Terminated'
+            }
+        });
         // Remove employee from all BroadcastGroups they are a member of
-        await BroadcastGroup.updateMany({ companyId: employeeToDelete.companyId, members: id }, { $pull: { members: id } });
+        // In Prisma, we delete the join table records directly
+        await prisma.broadcastGroupMember.deleteMany({
+            where: {
+                group: { companyId: employeeToDelete.companyId },
+                employeeId: String(id)
+            }
+        });
         res.status(200).json({ message: 'Employee deleted successfully' });
     }
     catch (error) {
@@ -246,7 +293,7 @@ export const deleteEmployee = async (req, res) => {
 export const restoreEmployee = async (req, res) => {
     try {
         const { id } = req.params;
-        const employee = await Employee.findById(id);
+        const employee = await prisma.employee.findUnique({ where: { id: String(id) } });
         if (!employee)
             return res.status(404).json({ message: 'Employee not found' });
         // Un-mangle (heuristic: removing -deleted-timestamp)
@@ -255,19 +302,25 @@ export const restoreEmployee = async (req, res) => {
         let newEmail = employee.email.split('-deleted-')[0];
         let newPhone = employee.phone.split('-deleted-')[0];
         // Check for collisions
-        const existing = await Employee.findOne({
-            $or: [{ email: newEmail }, { phone: newPhone }],
-            _id: { $ne: id },
-            isDeleted: false
+        const existing = await prisma.employee.findFirst({
+            where: {
+                OR: [{ email: newEmail }, { phone: newPhone }],
+                id: { not: String(id) },
+                isDeleted: false
+            }
         });
         if (existing) {
             return res.status(400).json({ message: 'Original email/phone is taken by another active employee. Please manually edit to restore.' });
         }
-        employee.isDeleted = false;
-        employee.status = 'Active';
-        employee.email = newEmail;
-        employee.phone = newPhone;
-        await employee.save();
+        await prisma.employee.update({
+            where: { id: String(id) },
+            data: {
+                isDeleted: false,
+                status: 'Active',
+                email: newEmail,
+                phone: newPhone
+            }
+        });
         res.status(200).json(employee);
     }
     catch (error) {
@@ -279,36 +332,38 @@ export const paySalary = async (req, res) => {
     try {
         const { id } = req.params; // Employee ID
         const { amount, payPeriod, paymentDate, remarks, companyId } = req.body;
-        const employee = await Employee.findById(id);
+        const employee = await prisma.employee.findUnique({ where: { id: String(id) } });
         if (!employee)
             return res.status(404).json({ message: 'Employee not found' });
         const { baseSalary, leavesTaken, freeLeaves, deductionAmount } = req.body;
         // 1. Create Salary Record
-        const salaryRecord = new SalaryRecord({
-            companyId,
-            employeeId: id,
-            amount: amount, // Final Paid Amount
-            baseSalary: baseSalary || employee.salary,
-            bonus: req.body.bonus || 0,
-            leavesTaken: leavesTaken || 0,
-            freeLeaves: freeLeaves || employee.freeLeavesPerMonth,
-            deductionAmount: deductionAmount || 0,
-            paymentDate,
-            payPeriod,
-            remarks,
-            status: 'Paid'
+        const salaryRecord = await prisma.salaryRecord.create({
+            data: {
+                companyId: String(companyId),
+                employeeId: String(id),
+                amount: Number(amount), // Final Paid Amount
+                baseSalary: baseSalary ? Number(baseSalary) : employee.salary,
+                bonus: req.body.bonus ? Number(req.body.bonus) : 0,
+                leavesTaken: leavesTaken ? Number(leavesTaken) : 0,
+                freeLeaves: freeLeaves ? Number(freeLeaves) : employee.freeLeavesPerMonth,
+                deductionAmount: deductionAmount ? Number(deductionAmount) : 0,
+                paymentDate: new Date(paymentDate),
+                payPeriod: String(payPeriod),
+                remarks: remarks ? String(remarks) : undefined,
+                status: 'Paid'
+            }
         });
-        await salaryRecord.save();
         // 2. Create Expense
-        const expense = new Expense({
-            companyId,
-            category: 'Payroll',
-            amount: amount,
-            date: paymentDate,
-            description: `Salary Payment for ${employee.firstName} ${employee.lastName} - ${payPeriod}`,
-            paymentMethod: 'Bank Transfer'
+        const expense = await prisma.expense.create({
+            data: {
+                companyId: String(companyId),
+                category: 'Payroll',
+                amount: Number(amount),
+                date: new Date(paymentDate),
+                description: `Salary Payment for ${employee.firstName} ${employee.lastName} - ${payPeriod}`,
+                paymentMethod: 'Bank Transfer'
+            }
         });
-        await expense.save();
         // 3. Send Email Notification
         // Only if email and password env vars are set (or mocked)
         // For this demo, we can assume a simple transporter if envs exist, else skip
@@ -340,21 +395,23 @@ export const calculateSalary = async (req, res) => {
     try {
         const { id } = req.params;
         const { month, year } = req.query; // e.g. 10, 2023
-        const employee = await Employee.findById(id);
+        const employee = await prisma.employee.findUnique({ where: { id: String(id) } });
         if (!employee)
             return res.status(404).json({ message: 'Employee not found' });
         const startDate = new Date(Number(year), Number(month) - 1, 1);
         const endDate = new Date(Number(year), Number(month), 0); // Last day of month
         // Fetch Approved Leaves
-        const leaves = await LeaveRequest.find({
-            employeeId: id,
-            status: 'Approved',
-            startDate: { $gte: startDate },
-            endDate: { $lte: endDate }
+        const leaves = await prisma.leaveRequest.findMany({
+            where: {
+                employeeId: String(id),
+                status: 'Approved',
+                startDate: { gte: startDate },
+                endDate: { lte: endDate }
+            }
         });
         // Calculate total leave days
         let totalLeaves = 0;
-        leaves.forEach(leave => {
+        leaves.forEach((leave) => {
             const start = new Date(Math.max(leave.startDate.getTime(), startDate.getTime()));
             const end = new Date(Math.min(leave.endDate.getTime(), endDate.getTime()));
             const diffTime = Math.abs(end.getTime() - start.getTime());
@@ -399,12 +456,14 @@ export const getLeaveRequests = async (req, res) => {
         const { companyId, employeeId } = req.query;
         if (!companyId)
             return res.status(400).json({ message: 'Company ID is required' });
-        const query = { companyId };
+        const query = { companyId: String(companyId) };
         if (employeeId)
-            query.employeeId = employeeId;
-        const leaves = await LeaveRequest.find(query)
-            .populate('employeeId', 'firstName lastName position')
-            .sort({ createdAt: -1 });
+            query.employeeId = String(employeeId);
+        const leaves = await prisma.leaveRequest.findMany({
+            where: query,
+            include: { employee: { select: { firstName: true, lastName: true, position: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
         res.status(200).json(leaves);
     }
     catch (error) {
@@ -415,7 +474,10 @@ export const updateLeaveStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status, remark } = req.body; // 'Approved' or 'Rejected'
-        const leave = await LeaveRequest.findByIdAndUpdate(id, { status, adminRemark: remark }, { new: true });
+        const leave = await prisma.leaveRequest.update({
+            where: { id: String(id) },
+            data: { status, adminRemark: remark }
+        });
         if (!leave)
             return res.status(404).json({ message: 'Leave request not found' });
         res.status(200).json(leave);

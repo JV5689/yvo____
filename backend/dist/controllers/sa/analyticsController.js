@@ -1,5 +1,4 @@
-import { Company } from '../../models/Global/Company.js';
-// import { Payment } from '../../models/Global/Payment.js'; // Assuming payment model exists or will be used
+import { prisma } from '../../src/config/db.js';
 // GET /sa/analytics/dashboard
 export const getDashboardAnalytics = async (req, res) => {
     try {
@@ -10,8 +9,11 @@ export const getDashboardAnalytics = async (req, res) => {
         // 1. Company Growth (Created per month)
         const startOfYear = new Date(targetYear, 0, 1);
         const endOfYear = new Date(targetYear + 1, 0, 1);
-        const companies = await Company.find({
-            createdAt: { $gte: startOfYear, $lt: endOfYear }
+        const companies = await prisma.company.findMany({
+            where: {
+                createdAt: { gte: startOfYear, lt: endOfYear }
+            },
+            select: { createdAt: true }
         });
         const monthlyGrowth = new Array(12).fill(0);
         companies.forEach(c => {
@@ -19,9 +21,11 @@ export const getDashboardAnalytics = async (req, res) => {
             monthlyGrowth[month]++;
         });
         // 2. Expiry Forecast (Expiring per month in target year)
-        // Find companies where subscriptionEndsAt is in this year
-        const expiringCompanies = await Company.find({
-            subscriptionEndsAt: { $gte: startOfYear, $lt: endOfYear }
+        const expiringCompanies = await prisma.company.findMany({
+            where: {
+                subscriptionEndsAt: { gte: startOfYear, lt: endOfYear }
+            },
+            select: { subscriptionEndsAt: true }
         });
         const monthlyExpiry = new Array(12).fill(0);
         expiringCompanies.forEach(c => {
@@ -31,16 +35,22 @@ export const getDashboardAnalytics = async (req, res) => {
             }
         });
         // 3. Status Distribution (Snapshot)
-        const statusDist = await Company.aggregate([
-            { $group: { _id: '$subscriptionStatus', count: { $sum: 1 } } }
-        ]);
+        const statusDistRaw = await prisma.company.groupBy({
+            by: ['subscriptionStatus'],
+            _count: { subscriptionStatus: true }
+        });
         res.json({
             year: targetYear,
             growth: monthlyGrowth,
             expiry: monthlyExpiry,
-            statusDistribution: statusDist.map(s => ({ name: s._id || 'Unknown', value: s.count })),
-            totalCompanies: await Company.countDocuments(),
-            activeCompanies: await Company.countDocuments({ subscriptionStatus: 'active' })
+            statusDistribution: statusDistRaw.map(s => ({
+                name: s.subscriptionStatus || 'Unknown',
+                value: s._count.subscriptionStatus
+            })),
+            totalCompanies: await prisma.company.count(),
+            activeCompanies: await prisma.company.count({
+                where: { subscriptionStatus: 'active' }
+            })
         });
     }
     catch (error) {
@@ -53,13 +63,16 @@ export const getExpiryReport = async (req, res) => {
         const { days = 30 } = req.query; // Default next 30 days
         const limitDate = new Date();
         limitDate.setDate(limitDate.getDate() + parseInt(days));
-        const companies = await Company.find({
-            subscriptionEndsAt: { $gte: new Date(), $lte: limitDate }
-        }).populate('planId', 'name');
+        const companies = await prisma.company.findMany({
+            where: {
+                subscriptionEndsAt: { gte: new Date(), lte: limitDate }
+            },
+            include: { plan: { select: { name: true } } }
+        });
         const report = companies.map(c => ({
             name: c.name,
             email: c.email,
-            plan: c.planId?.name || 'N/A',
+            plan: c.plan?.name || 'N/A',
             status: c.subscriptionStatus,
             expiryDate: c.subscriptionEndsAt
         }));
@@ -73,11 +86,19 @@ export const getExpiryReport = async (req, res) => {
 export const getCompanyReport = async (req, res) => {
     try {
         // Full extract of company validity details
-        const companies = await Company.find().populate('planId', 'name');
+        const companies = await prisma.company.findMany({
+            include: {
+                plan: { select: { name: true } },
+                memberships: {
+                    where: { role: 'OWNER' },
+                    include: { user: { select: { fullName: true } } }
+                }
+            }
+        });
         const report = companies.map(c => ({
             name: c.name,
-            owner: c.userId, // Ideally populate owner Details
-            plan: c.planId?.name || 'N/A',
+            owner: c.memberships[0]?.user?.fullName || 'N/A',
+            plan: c.plan?.name || 'N/A',
             status: c.subscriptionStatus,
             created: c.createdAt,
             expires: c.subscriptionEndsAt
