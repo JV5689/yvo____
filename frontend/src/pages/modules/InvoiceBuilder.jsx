@@ -407,46 +407,114 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
 
             {/* Quick Create Customer Modal */}
             {showCustomerModal && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 text-slate-900">
-                    <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in duration-300 border border-white/20">
-                        <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-6 flex items-center gap-3">
-                            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
-                                <Users size={24} strokeWidth={2.5} />
-                            </div>
-                            New Client
-                        </h2>
-                        <div className="space-y-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Business Name *</label>
-                                <input type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 text-slate-900 rounded-xl placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Phone Number *</label>
-                                <input type="tel" className="w-full bg-slate-50 border border-slate-200 p-3.5 text-slate-900 rounded-xl placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" value={newCustomer.phone} onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Business Address</label>
-                                <textarea className="w-full bg-slate-50 border border-slate-200 p-3.5 text-slate-900 rounded-xl placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all" rows={2} value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} />
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl shadow-slate-900/20 overflow-hidden animate-in zoom-in duration-300 border border-slate-100">
+
+                        {/* Header */}
+                        <div className="relative px-7 pt-7 pb-6 bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 overflow-hidden">
+                            <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/5 rounded-full" />
+                            <div className="absolute -bottom-8 -left-4 w-24 h-24 bg-white/5 rounded-full" />
+                            <div className="relative flex items-center gap-4">
+                                <div className="p-3 bg-white/15 backdrop-blur-sm rounded-xl border border-white/20 shadow-inner">
+                                    <Users size={22} className="text-white" strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-white tracking-tight">New Client</h2>
+                                    <p className="text-indigo-200 text-xs font-medium mt-0.5">Fill in the client details below</p>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100">
-                            <button onClick={() => setShowCustomerModal(false)} className="px-6 py-3 font-bold text-slate-400 hover:text-slate-600 transition-colors">Cancel</button>
-                            <button onClick={async () => {
-                                try {
-                                    const cid = localStorage.getItem('companyId');
-                                    const res = await api.post('/customers', { companyId: cid, ...newCustomer });
-                                    setCustomers([...customers, res.data]);
-                                    handleUpdateData('customerId', res.data.id || res.data._id);
-                                    handleUpdateData('customerName', res.data.name);
-                                    handleUpdateData('clientAddress', res.data.address);
-                                    setShowCustomerModal(false);
-                                    toast.success("Client added!");
-                                } catch (e) { toast.error("Failed to add client"); }
-                            }} className="px-10 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95">Add & Apply</button>
+
+                        {/* Body */}
+                        <div className="px-7 py-6 space-y-5">
+                            {/* Business Name */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                    Business Name <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Acme Corp"
+                                    className="w-full bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-900 rounded-xl placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                                    value={newCustomer.name}
+                                    onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                                />
+                            </div>
+
+                            {/* Phone + GSTIN side by side */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                        Phone <span className="text-red-400">*</span>
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        placeholder="+91 98765 43210"
+                                        className="w-full bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-900 rounded-xl placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium"
+                                        value={newCustomer.phone}
+                                        onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        GSTIN
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="22AAAAA0000A1Z5"
+                                        className="w-full bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-900 rounded-xl placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-medium uppercase"
+                                        value={newCustomer.taxId || ''}
+                                        onChange={e => setNewCustomer({ ...newCustomer, taxId: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Address */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    Business Address
+                                </label>
+                                <textarea
+                                    placeholder="Street, City, State, ZIP"
+                                    className="w-full bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-900 rounded-xl placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none font-medium"
+                                    rows={2}
+                                    value={newCustomer.address}
+                                    onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-7 py-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+                            <button
+                                onClick={() => setShowCustomerModal(false)}
+                                className="px-5 py-2.5 text-sm font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 hover:text-slate-700 transition-all active:scale-95"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const cid = localStorage.getItem('companyId');
+                                        const res = await api.post('/customers', { companyId: cid, ...newCustomer });
+                                        setCustomers([...customers, res.data]);
+                                        handleUpdateData('customerId', res.data.id || res.data._id);
+                                        handleUpdateData('customerName', res.data.name);
+                                        handleUpdateData('clientAddress', res.data.address);
+                                        setShowCustomerModal(false);
+                                        toast.success("Client added!");
+                                    } catch (e) { toast.error("Failed to add client"); }
+                                }}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-black rounded-xl hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                            >
+                                <Users size={15} />
+                                Add &amp; Apply
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+
         </div>
     );
 }

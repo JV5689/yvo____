@@ -6,28 +6,6 @@ import TemplateDesigner from '../../components/invoice-builder/TemplateDesigner'
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
 
-const TemplateNameInput = ({ value, onChange }) => {
-    const [localName, setLocalName] = useState(value);
-
-    // Sync from props when parent opens a new template
-    useEffect(() => {
-        setLocalName(value);
-    }, [value]);
-
-    return (
-        <input
-            type="text"
-            required
-            className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50"
-            placeholder="e.g., Creative Layout V1"
-            value={localName}
-            onChange={(e) => {
-                setLocalName(e.target.value);
-                onChange(e.target.value);  // sync on every keystroke, not just on blur
-            }}
-        />
-    );
-};
 
 export default function CompanyTemplates() {
     const { user } = useAuth();
@@ -36,9 +14,9 @@ export default function CompanyTemplates() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [currentTemplate, setCurrentTemplate] = useState(null);
+    const [templateName, setTemplateName] = useState('');
 
     const [formData, setFormData] = useState({
-        name: '',
         type: 'COMPANY',
         themeIdentifier: 'classic',
         taxRate: 10,
@@ -72,20 +50,19 @@ export default function CompanyTemplates() {
     const handleOpenModal = (template = null, isDuplicating = false) => {
         if (template) {
             setCurrentTemplate(isDuplicating ? null : template);
+            setTemplateName(isDuplicating ? `${template.name} (Copy)` : template.name || '');
             setFormData({
-                name: isDuplicating ? `${template.name} (Copy)` : template.name,
                 type: 'COMPANY',
                 themeIdentifier: template.themeIdentifier || 'classic',
                 taxRate: template.taxRate !== undefined ? template.taxRate : 10,
                 notes: template.notes || '',
-                // If duplicating a global template, ensure we get a deep copy of the layout and items
                 layout: JSON.parse(JSON.stringify(template.layout || [])),
                 items: JSON.parse(JSON.stringify(template.items || []))
             });
         } else {
             setCurrentTemplate(null);
+            setTemplateName('');
             setFormData({
-                name: '',
                 type: 'COMPANY',
                 layout: [
                     { id: `block_${Date.now()}_1`, type: 'LOGO', config: { x: 40, y: 40, width: 150, height: 80 } },
@@ -118,7 +95,7 @@ export default function CompanyTemplates() {
                 toast.error("Error: Company ID missing.");
                 return;
             }
-            const payload = { ...formData, companyId };
+            const payload = { ...formData, name: templateName, companyId };
 
             if (currentTemplate && currentTemplate.type === 'COMPANY') {
                 const templateId = currentTemplate.id || currentTemplate._id;
@@ -301,11 +278,15 @@ export default function CompanyTemplates() {
                             {/* Toolbar/Name Area */}
                             <div className="bg-white/50 backdrop-blur-sm px-6 py-4 border-b border-slate-200 flex items-center gap-6 shrink-0 z-10">
                                 <div className="w-full max-w-sm">
-                                    <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-widest">Global Template Name</label>
+                                    <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-widest">Template Name</label>
                                     <div className="relative group">
-                                        <TemplateNameInput
-                                            value={formData.name}
-                                            onChange={(newName) => setFormData(prev => ({ ...prev, name: newName }))}
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50"
+                                            placeholder="e.g., Creative Layout V1"
+                                            value={templateName}
+                                            onChange={(e) => setTemplateName(e.target.value)}
                                         />
                                         <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-300 group-focus-within:text-indigo-400 transition-colors">
                                             <Edit2 size={14} />

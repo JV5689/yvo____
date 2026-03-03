@@ -10,20 +10,14 @@ export const getInventory = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Company ID is required' });
         }
 
-        // TEMPORARY HOTFIX: Add image column manually if it doesn't exist
-        try {
-            await (prisma as any).$executeRawUnsafe(`ALTER TABLE InventoryItem ADD COLUMN image LONGTEXT`);
-        } catch (e) {
-            // Likely already exists or DB error
-        }
+        // Use raw SQL to include image column (Prisma client may not know about it)
+        const isDeleted = showDeleted === 'true' ? 1 : 0;
+        const items = await (prisma as any).$queryRawUnsafe(
+            `SELECT * FROM InventoryItem WHERE companyId = ? AND isDeleted = ? ORDER BY name ASC`,
+            String(companyId),
+            isDeleted
+        );
 
-        const items = await prisma.inventoryItem.findMany({
-            where: {
-                companyId: String(companyId),
-                isDeleted: showDeleted === 'true'
-            },
-            orderBy: { name: 'asc' }
-        });
         res.status(200).json(items);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -55,50 +49,48 @@ export const createInventoryItem = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Company ID, SKU, and Name are required' });
         }
 
-        try {
-            const newItem = await prisma.inventoryItem.create({
-                data: {
-                    companyId: String(companyId),
-                    sku: String(sku),
-                    name: String(name),
-                    description,
-                    quantityOnHand: quantityOnHand !== undefined ? Number(quantityOnHand) : 0,
-                    reorderLevel: reorderLevel !== undefined ? Number(reorderLevel) : 5,
-                    sellingPrice: sellingPrice ? Number(sellingPrice) : undefined,
-                    category,
-                    image
-                }
-            });
-            return res.status(201).json(newItem);
-        } catch (dbError: any) {
-            // If image column is missing, try creating without it
-            if (dbError.message.includes('image') || dbError.code === 'P2021') {
-                const newItem = await prisma.inventoryItem.create({
-                    data: {
-                        companyId: String(companyId),
-                        sku: String(sku),
-                        name: String(name),
-                        description,
-                        quantityOnHand: quantityOnHand !== undefined ? Number(quantityOnHand) : 0,
-                        reorderLevel: reorderLevel !== undefined ? Number(reorderLevel) : 5,
-                        sellingPrice: sellingPrice ? Number(sellingPrice) : undefined,
-                        category
-                    }
-                });
-                return res.status(201).json(newItem);
+        // Create item without image first (Prisma client may not know about image column)
+        const newItem = await prisma.inventoryItem.create({
+            data: {
+                companyId: String(companyId),
+                sku: String(sku),
+                name: String(name),
+                description,
+                quantityOnHand: quantityOnHand !== undefined ? Number(quantityOnHand) : 0,
+                reorderLevel: reorderLevel !== undefined ? Number(reorderLevel) : 5,
+                sellingPrice: sellingPrice ? Number(sellingPrice) : undefined,
+                category
             }
-            throw dbError;
+        });
+
+        // If image provided, update via raw SQL (bypasses stale Prisma client)
+        if (image && newItem.id) {
+            try {
+                await (prisma as any).$executeRawUnsafe(
+                    `UPDATE InventoryItem SET image = ? WHERE id = ?`,
+                    image,
+                    newItem.id
+                );
+            } catch (imgErr) {
+                console.warn('Could not set image:', imgErr);
+            }
         }
+
+        res.status(201).json({ ...newItem, image: image || null });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
+
 // Update item
 export const updateInventoryItem = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const updates = { ...req.body };
+        const image = updates.image;
+        delete updates.image; // Remove image from Prisma update (client doesn't know about it)
+        delete updates.companyId; // Don't allow changing companyId
 
         // Type cast numbers for strict Prisma schema
         if (updates.quantityOnHand !== undefined) updates.quantityOnHand = Number(updates.quantityOnHand);
@@ -110,11 +102,20 @@ export const updateInventoryItem = async (req: Request, res: Response) => {
             data: { ...updates, lastModifiedAt: new Date() }
         });
 
-        if (!item) {
-            return res.status(404).json({ message: 'Item not found' });
+        // Update image via raw SQL if provided
+        if (image !== undefined) {
+            try {
+                await (prisma as any).$executeRawUnsafe(
+                    `UPDATE InventoryItem SET image = ? WHERE id = ?`,
+                    image || null,
+                    String(id)
+                );
+            } catch (imgErr) {
+                console.warn('Could not update image:', imgErr);
+            }
         }
 
-        res.status(200).json(item);
+        res.status(200).json({ ...item, image: image !== undefined ? image : null });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

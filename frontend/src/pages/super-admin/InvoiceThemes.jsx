@@ -1,29 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, FileText, Check, X } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import TemplateDesigner from '../../components/invoice-builder/TemplateDesigner';
 
-const TemplateNameInput = ({ value, onChange }) => {
-    const [localName, setLocalName] = useState(value);
-
-    // Sync from props when parent opens a new template
-    useEffect(() => {
-        setLocalName(value);
-    }, [value]);
-
-    return (
-        <input
-            type="text"
-            required
-            className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50"
-            placeholder="e.g., Standard Service Invoice"
-            value={localName}
-            onChange={(e) => setLocalName(e.target.value)}
-            onBlur={() => onChange(localName)}
-        />
-    );
-};
 
 export default function InvoiceThemes() {
     const [templates, setTemplates] = useState([]);
@@ -31,10 +11,10 @@ export default function InvoiceThemes() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [currentTemplate, setCurrentTemplate] = useState(null);
-    const [activeTab, setActiveTab] = useState('global'); // 'global' or 'company'
+    const [activeTab, setActiveTab] = useState('global');
+    const [templateName, setTemplateName] = useState('');
 
     const [formData, setFormData] = useState({
-        name: '',
         type: 'GLOBAL',
         themeIdentifier: 'classic',
         taxRate: 10,
@@ -80,8 +60,8 @@ export default function InvoiceThemes() {
     const handleOpenModal = (template = null) => {
         if (template) {
             setCurrentTemplate(template);
+            setTemplateName(template.name || '');
             setFormData({
-                name: template.name,
                 type: 'GLOBAL',
                 themeIdentifier: template.themeIdentifier || 'classic',
                 taxRate: template.taxRate !== undefined ? template.taxRate : 10,
@@ -90,10 +70,9 @@ export default function InvoiceThemes() {
             });
         } else {
             setCurrentTemplate(null);
+            setTemplateName('');
             setFormData({
-                name: '',
                 type: 'GLOBAL',
-                // Provide a solid Canva-style defaults to give the user a starting point
                 layout: [
                     { id: `block_${Date.now()}_1`, type: 'LOGO', config: { x: 40, y: 40, width: 150, height: 80 } },
                     { id: `block_${Date.now()}_2`, type: 'COMPANY_NAME', config: { x: 40, y: 130, width: 250, height: 30, fontSize: 24, fontWeight: 'bold' } },
@@ -119,8 +98,7 @@ export default function InvoiceThemes() {
     const handleSave = async (e) => {
         e.preventDefault();
         try {
-            // Remove companyId from global templates so Mongoose doesn't try to cast an empty string to ObjectId
-            const payload = { ...formData };
+            const payload = { ...formData, name: templateName };
             if (payload.type === 'GLOBAL') {
                 delete payload.companyId;
             }
@@ -319,9 +297,13 @@ export default function InvoiceThemes() {
                         <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center gap-6 shrink-0 z-10 shadow-sm">
                             <div className="w-full max-w-md">
                                 <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Template Name</label>
-                                <TemplateNameInput
-                                    value={formData.name}
-                                    onChange={(newName) => setFormData(prev => ({ ...prev, name: newName }))}
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50"
+                                    placeholder="e.g., Standard Service Invoice"
+                                    value={templateName}
+                                    onChange={(e) => setTemplateName(e.target.value)}
                                 />
                             </div>
                             <div className="flex-1"></div>
