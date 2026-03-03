@@ -12,6 +12,13 @@ export const AuthProvider = ({ children }) => {
         // Check for existing token
         const token = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
+        const role = localStorage.getItem('userRole');
+        const coId = localStorage.getItem('companyId');
+
+        // Clean up malformed IDs from previous bug
+        if (coId === 'undefined' || coId === 'null') {
+            localStorage.removeItem('companyId');
+        }
 
         if (token && storedUser) {
             setUser(JSON.parse(storedUser));
@@ -58,7 +65,10 @@ export const AuthProvider = ({ children }) => {
 
         // Employee might not need companyId locally if backend handles it via token
         if (userData.company) {
-            localStorage.setItem('companyId', userData.company._id);
+            const coId = typeof userData.company === 'string'
+                ? userData.company
+                : (userData.company.id || userData.company._id);
+            if (coId) localStorage.setItem('companyId', coId);
         }
 
         setUser(userData);

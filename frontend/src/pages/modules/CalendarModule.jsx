@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Clock, Video, List, Trash2, X, Check } from 'lucide-react';
+import api from '../../services/api';
 import { useUI } from '../../context/UIContext';
 
 export default function CalendarModule() {
@@ -97,10 +98,23 @@ export default function CalendarModule() {
         setShowModal(true);
     };
 
+    const handleCloseModal = () => {
+        setShowModal(false);
+        resetForm();
+    };
+
     const handleSaveEvent = async (e) => {
         e.preventDefault();
         try {
-            const companyId = localStorage.getItem('companyId');
+            let companyId = localStorage.getItem('companyId');
+
+            // Fix for stale "undefined"/"null" strings in storage
+            if (companyId === 'undefined' || companyId === 'null' || !companyId) {
+                console.error('Session error: Company ID is missing or invalid.');
+                alert('Session Error', 'Your session might have expired. Please log out and log back in.', 'error');
+                return;
+            }
+
             const payload = { ...eventForm, companyId };
 
             if (isEditing) {
