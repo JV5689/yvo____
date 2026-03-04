@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { ArrowLeft, User, Phone, MapPin, Mail, FileText, IndianRupee, History, Activity, Download, Edit, Search, Calendar as CalendarIcon, CreditCard, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Mail, FileText, IndianRupee, History, Activity, Download, Edit, Search, Calendar as CalendarIcon, CreditCard, ChevronDown, CheckCircle2, Plus } from 'lucide-react';
 
 import Modal from '../Modal';
 import InvoiceViewerModal from '../invoice-builder/InvoiceViewerModal';
@@ -167,13 +167,22 @@ export default function CustomerProfile() {
                     <h1 className="text-2xl font-bold text-slate-800">{customer.name}</h1>
                     <p className="text-sm text-slate-500 mt-1">Customer Profile & Financial Ledger</p>
                 </div>
-                <button
-                    onClick={openCreatePaymentModal}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium shadow-sm hover:bg-green-700 transition"
-                >
-                    <IndianRupee size={16} />
-                    <span className="hidden sm:inline">Receive Payment</span>
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => navigate(`/dashboard/invoices/new?customerId=${customer.id || customer._id}`)}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm hover:bg-indigo-700 transition"
+                    >
+                        <Plus size={16} />
+                        <span className="hidden sm:inline">Create Invoice</span>
+                    </button>
+                    <button
+                        onClick={openCreatePaymentModal}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold shadow-sm hover:bg-green-200 transition"
+                    >
+                        <IndianRupee size={16} />
+                        <span className="hidden sm:inline">Receive Payment</span>
+                    </button>
+                </div>
             </div>
 
             {/* Top Stat Cards */}

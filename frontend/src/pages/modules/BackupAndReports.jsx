@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, FileText, Database, Clock, CheckCircle, AlertCircle, Loader2, Calendar, Filter, User, Users, Building2, DollarSign, Receipt, Settings } from 'lucide-react';
+import { Download, FileText, Database, Clock, CheckCircle, AlertCircle, Loader2, Calendar, Filter, User, Users, Building2, IndianRupee, Receipt, Settings } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
@@ -330,7 +330,7 @@ export default function BackupAndReports() {
                             <div className="space-y-3">
                                 <ReportAction icon={<Receipt size={18} />} label="Finance Report (PDF)" onClick={generateFinanceReport} />
                                 <ReportAction icon={<Users size={18} />} label="Payroll Export (CSV)" onClick={() => downloadCSVReport('payroll')} />
-                                <ReportAction icon={<DollarSign size={18} />} label="Revenue Export (CSV)" onClick={() => downloadCSVReport('revenue')} />
+                                <ReportAction icon={<IndianRupee size={18} />} label="Revenue Export (CSV)" onClick={() => downloadCSVReport('revenue')} />
                             </div>
                         </div>
                     </div>

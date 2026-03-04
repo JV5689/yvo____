@@ -30,19 +30,18 @@ export const getCustomers = async (req: Request, res: Response) => {
         const mappedCustomers = await Promise.all(customers.map(async (customer) => {
             const totalInvoiced = customer.invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
-            // In a true implementation, fetch payments from the DB for this customer.
-            // If Payment model has customerId:
-            // const payments = await prisma.payment.findMany({ where: { customerId: customer.id, isDeleted: false } });
-            // const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
-            const payments: any[] = []; // Defaulting since Payment schema logic might need refinement here
-            const totalReceived = 0;
+            // Fetch payments to calculate actual received amount
+            const payments = await prisma.payment.findMany({
+                where: { customerId: customer.id, isDeleted: false }
+            });
+            const totalReceived = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
             return {
                 ...customer,
                 invoices: undefined, // remove from output like Mongoose $project
                 totalInvoiced,
                 totalReceived,
-                totalDue: totalInvoiced - totalReceived
+                totalDue: Math.max(0, totalInvoiced - totalReceived)
             };
         }));
 

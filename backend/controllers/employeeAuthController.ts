@@ -76,7 +76,7 @@ export const loginEmployee = async (req: Request, res: Response) => {
                 phone: employee.phone,
                 position: employee.position,
                 department: employee.department,
-                company: employee.companyId,
+                company: company, // Use the company object fetched at line 38
                 avatar: employee.avatar,
                 role: 'employee'
             }
@@ -92,15 +92,23 @@ export const getEmployeeProfile = async (req: Request, res: Response) => {
     try {
         const employeeId = req.user?.userId || (req.user as any)?.id; // From middleware
         const employee = await prisma.employee.findUnique({
-            where: { id: String(employeeId) },
-            include: { company: { select: { name: true, logo: true } } }
+            where: { id: String(employeeId) }
         });
 
         if (!employee) {
             return res.status(404).json({ message: 'Employee not found' });
         }
 
-        res.json(employee);
+        // Manually fetch company to avoid relation issues
+        const company = await prisma.company.findUnique({
+            where: { id: employee.companyId },
+            select: { name: true, logo: true }
+        });
+
+        res.json({
+            ...employee,
+            company: company
+        });
     } catch (error: any) {
         res.status(500).json({ message: 'Server error' });
     }

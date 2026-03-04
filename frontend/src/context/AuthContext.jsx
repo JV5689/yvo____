@@ -21,7 +21,19 @@ export const AuthProvider = ({ children }) => {
         }
 
         if (token && storedUser) {
-            setUser(JSON.parse(storedUser));
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+
+            // If employee, refresh profile to get latest company info
+            if (role === 'employee' || parsedUser.role === 'employee') {
+                api.get('/employee/auth/me')
+                    .then(res => {
+                        const updatedUser = { ...parsedUser, ...res.data };
+                        localStorage.setItem('user', JSON.stringify(updatedUser));
+                        setUser(updatedUser);
+                    })
+                    .catch(e => console.error("Profile refresh failed", e));
+            }
         }
         setLoading(false);
     }, []);

@@ -64,7 +64,7 @@ export const getCompanies = async (req, res) => {
         });
         const total = await prisma.company.count({ where });
         res.json({
-            companies,
+            companies: companies.map((c) => ({ ...c, _id: c.id, plan: c.plan ? { ...c.plan, _id: c.planId } : null })),
             total,
             pages: Math.ceil(total / Number(limit))
         });
@@ -98,7 +98,10 @@ export const getCompanyById = async (req, res) => {
                 email: true
             }
         });
-        res.json({ company, admins });
+        res.json({
+            company: { ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null },
+            admins: admins.map((a) => ({ ...a, _id: a.id }))
+        });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -156,7 +159,11 @@ export const createCompany = async (req, res) => {
             });
             return { company, user };
         });
-        res.status(201).json(result);
+        res.status(201).json({
+            ...result,
+            company: { ...result.company, _id: result.company.id },
+            user: { ...result.user, _id: result.user.id }
+        });
     }
     catch (error) {
         console.error("Create Company Error:", error);
@@ -174,9 +181,9 @@ export const updateCompanyStatus = async (req, res) => {
         const company = await prisma.company.update({
             where: { id: String(req.params.id) },
             data,
-            include: { plan: true }
+            include: { plan: { select: { name: true, code: true } } }
         });
-        res.json(company);
+        res.json({ ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -193,9 +200,9 @@ export const updateCompanyPlan = async (req, res) => {
         const company = await prisma.company.update({
             where: { id: String(req.params.id) },
             data: { planId: plan.id },
-            include: { plan: true }
+            include: { plan: { select: { name: true, code: true } } }
         });
-        res.json(company);
+        res.json({ ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -221,7 +228,7 @@ export const updateCompanyFlags = async (req, res) => {
             where: { id: String(req.params.id) },
             data: { featureFlags: newFlags }
         });
-        res.json(updatedCompany);
+        res.json({ ...updatedCompany, _id: updatedCompany.id });
     }
     catch (error) {
         console.error("[SuperAdmin] Update Flags Error:", error);

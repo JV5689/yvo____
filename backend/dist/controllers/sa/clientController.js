@@ -5,7 +5,7 @@ export const getClients = async (req, res) => {
         const clients = await prisma.clientLogo.findMany({
             orderBy: { createdAt: 'desc' }
         });
-        res.status(200).json(clients);
+        res.status(200).json(clients.map((c) => ({ ...c, _id: c.id })));
     }
     catch (error) {
         console.error('Error fetching clients:', error);
@@ -22,7 +22,7 @@ export const addClient = async (req, res) => {
         const newClient = await prisma.clientLogo.create({
             data: { name, logoUrl }
         });
-        res.status(201).json(newClient);
+        res.status(201).json({ ...newClient, _id: newClient.id });
     }
     catch (error) {
         console.error('Error adding client:', error);

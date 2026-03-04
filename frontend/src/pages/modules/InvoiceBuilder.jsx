@@ -93,14 +93,15 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
 
                 setCompanyConfig(configRes.data.company);
                 setTemplates(templatesRes.data);
-                setCustomers(customersRes.data);
+                const fetchedCustomers = customersRes.data;
+                setCustomers(fetchedCustomers);
                 setInventory(inventoryRes.data);
 
                 if (id) {
                     // --- Loading existing invoice ---
                     const invRes = await api.get(`/invoices/${id}`);
                     const data = invRes.data;
-                    const cleanedItems = (data.items || []).map(({ id: _id, invoiceId: _inv, customFields: _cf, invoice: _i, inventory: _inv2, ...rest }) => rest);
+                    const cleansedItems = (data.items || []).map(({ id: _id, invoiceId: _inv, customFields: _cf, invoice: _i, inventory: _inv2, ...rest }) => rest);
                     setInvoiceData({
                         invoiceNumber: data.invoiceNumber || '',
                         customerId: data.customerId || '',
@@ -126,12 +127,28 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                 } else {
                     // --- New invoice ---
                     // Fetch sequential invoice number from backend
+                    let nextNum = '';
                     try {
                         const numRes = await api.get('/invoices/next-number', { params: { companyId } });
-                        setInvoiceData(prev => ({ ...prev, invoiceNumber: numRes.data.invoiceNumber }));
+                        nextNum = numRes.data.invoiceNumber;
                     } catch {
-                        setInvoiceData(prev => ({ ...prev, invoiceNumber: `INV-${Date.now().toString().slice(-6)}` }));
+                        nextNum = `INV-${Date.now().toString().slice(-6)}`;
                     }
+
+                    // Check for customerId in URL
+                    const urlCustomerId = searchParams.get('customerId');
+                    let preselectedCustomer = null;
+                    if (urlCustomerId) {
+                        preselectedCustomer = fetchedCustomers.find(c => (c.id === urlCustomerId || c._id === urlCustomerId));
+                    }
+
+                    setInvoiceData(prev => ({
+                        ...prev,
+                        invoiceNumber: nextNum,
+                        customerId: preselectedCustomer ? (preselectedCustomer.id || preselectedCustomer._id) : prev.customerId,
+                        customerName: preselectedCustomer ? preselectedCustomer.name : prev.customerName,
+                        clientAddress: preselectedCustomer ? preselectedCustomer.address : prev.clientAddress
+                    }));
 
                     // Apply template layout
                     if (templateIdFromUrl) {
@@ -157,7 +174,7 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
             }
         };
         fetchData();
-    }, [id, templateIdFromUrl]);
+    }, [id, templateIdFromUrl, searchParams]);
 
     const handleUpdateData = useCallback((field, value) => {
         setInvoiceData(prev => ({ ...prev, [field]: value }));

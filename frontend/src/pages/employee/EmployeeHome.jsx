@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
 import api from '../../services/api';
-import { DollarSign, Clock, Calendar, MessageSquare, X, FileText } from 'lucide-react';
+import { IndianRupee, Clock, Calendar, MessageSquare, X, FileText } from 'lucide-react';
 
 const StatCard = ({ icon, label, value, subtext }) => (
     <div className="rounded-2xl border border-slate-100 bg-white p-5 md:p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] flex items-center gap-4 hover:translate-y-[-2px] transition-all duration-300">
@@ -99,13 +99,13 @@ export default function EmployeeHome() {
                     Welcome Back, <span className="text-blue-600">{user.firstName}!</span>
                 </h1>
                 <p className="text-sm md:text-base text-slate-500 font-medium opacity-80">
-                    Your daily overview for <span className="text-slate-900 border-b-2 border-blue-100">{user.company?.name || user.companyId?.name || "your portal"}</span>
+                    Your daily overview for <span className="text-slate-900 border-b-2 border-blue-100">{(typeof user.company === 'object' ? user.company?.name : null) || user.companyId?.name || "your portal"}</span>
                 </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
-                    icon={<DollarSign className="text-blue-600" />}
+                    icon={<IndianRupee className="text-blue-600" />}
                     label="Last Salary"
                     value={stats.lastSalary ? `₹${stats.lastSalary.amount.toLocaleString()}` : 'N/A'}
                     subtext={stats.lastSalary ? stats.lastSalary.payPeriod : 'No records'}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { Download, DollarSign } from 'lucide-react';
+import { Download, IndianRupee } from 'lucide-react';
 
 export default function EmployeeSalary() {
     const [salaries, setSalaries] = useState([]);
@@ -88,7 +88,7 @@ export default function EmployeeSalary() {
             <div className="md:hidden space-y-4">
                 {salaries.length === 0 ? (
                     <div className="py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                        <DollarSign className="mx-auto text-slate-300 mb-2" size={40} />
+                        <IndianRupee className="mx-auto text-slate-300 mb-2" size={40} />
                         <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No records found</p>
                     </div>
                 ) : (
@@ -110,7 +110,7 @@ export default function EmployeeSalary() {
                             <div className="grid grid-cols-2 gap-4 mb-6">
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Amount Paid</p>
-                                    <p className="text-xl font-black text-blue-600">₹{salary.amount.toLocaleString()}</p>
+                                    <div className="text-3xl font-black text-slate-900 tracking-tight">₹{salary.amount.toLocaleString()}</div>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</p>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
-import { X, Type, Image, Hash, DollarSign, FileText, Settings, AlignLeft, Grid, ChevronUp, ChevronDown, Plus } from 'lucide-react';
+import { X, Type, Image, Hash, IndianRupee, FileText, Settings, AlignLeft, Grid, ChevronUp, ChevronDown, Plus } from 'lucide-react';
 import { renderBlock } from './InvoiceRenderer';
 
 const mmToPx = 3.7795275591; // 1mm = ~3.78px for screen resolution matching A4
@@ -20,7 +20,7 @@ const AVAILABLE_WIDGETS = [
     { type: 'CUSTOMER_DETAILS', label: 'Customer Details', defaultW: 250, defaultH: 80, icon: <AlignLeft size={16} /> },
 
     { type: 'ITEMS_TABLE', label: 'Items Table', defaultW: 700, defaultH: 150, icon: <FileText size={16} /> },
-    { type: 'TOTALS', label: 'Totals Block', defaultW: 300, defaultH: 120, icon: <DollarSign size={16} /> },
+    { type: 'TOTALS', label: 'Totals Block', defaultW: 300, defaultH: 120, icon: <IndianRupee size={16} /> },
 
     { type: 'NOTES_LABEL', label: '"Terms & Notes" Label', defaultW: 200, defaultH: 30, icon: <Type size={16} /> },
     { type: 'NOTES_CONTENT', label: 'Notes Content', defaultW: 400, defaultH: 80, icon: <AlignLeft size={16} /> },
@@ -47,11 +47,11 @@ const dummyData = {
         ]
     },
     companyConfig: {
-        name: 'Your Company Name',
+        name: 'YVO',
         address: '456 Startup Blvd',
-        email: 'hello@yourcompany.com',
+        email: 'hello@yvo.com',
         phone: '+1 (555) 123-4567',
-        website: 'www.yourcompany.com'
+        website: 'www.yvo.com'
     },
     taxRate: 10,
     calculateSubtotal: () => 1500,

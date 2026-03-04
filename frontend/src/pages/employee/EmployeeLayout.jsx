@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
-    LayoutDashboard, DollarSign, Calendar, MessageSquare, LogOut, FileText, Menu, X, Users
+    LayoutDashboard, IndianRupee, Calendar, MessageSquare, LogOut, FileText, Menu, X, Users
 } from 'lucide-react';
 
 export default function EmployeeLayout() {
@@ -47,8 +47,8 @@ export default function EmployeeLayout() {
                         <div className="bg-blue-600 p-1.5 rounded-lg">
                             <Users className="text-white" size={22} strokeWidth={2.5} />
                         </div>
-                        <span className="text-xl font-black text-slate-900 tracking-tight">
-                            PORTAL
+                        <span className="text-xl font-black text-slate-900 tracking-tight uppercase">
+                            {user.company?.name || 'PORTAL'}
                         </span>
                     </div>
                     <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors">
@@ -64,7 +64,7 @@ export default function EmployeeLayout() {
                         active={location.pathname === '/employee-dashboard'}
                     />
                     <SidebarItem
-                        icon={<DollarSign size={20} />}
+                        icon={<IndianRupee size={20} />}
                         label="My Salary"
                         href="/employee-dashboard/salary"
                         active={location.pathname === '/employee-dashboard/salary'}
@@ -130,7 +130,7 @@ export default function EmployeeLayout() {
                     </div>
                     <div className="hidden md:flex items-center gap-4">
                         <div className="text-sm font-semibold text-blue-700 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 shadow-sm">
-                            {user.company?.name || user.companyId?.name || 'Your Company'}
+                            {(typeof user.company === 'object' ? user.company?.name : null) || user.companyId?.name || 'Portal'}
                         </div>
                     </div>
                 </header>
@@ -149,7 +149,7 @@ export default function EmployeeLayout() {
                     active={location.pathname === '/employee-dashboard'}
                 />
                 <BottomNavItem
-                    icon={<DollarSign size={20} />}
+                    icon={<IndianRupee size={20} />}
                     label="Salary"
                     href="/employee-dashboard/salary"
                     active={location.pathname === '/employee-dashboard/salary'}

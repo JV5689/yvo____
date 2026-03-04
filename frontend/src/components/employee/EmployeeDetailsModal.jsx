@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Calendar, DollarSign, Briefcase, Mail, Phone, Clock, FileText } from 'lucide-react';
+import { X, User, Calendar, IndianRupee, Briefcase, Mail, Phone, Clock, FileText } from 'lucide-react';
 import api from '../../services/api';
 
 export default function EmployeeDetailsModal({ employee, onClose }) {
@@ -185,7 +185,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                                     <div className="space-y-6">
                                         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                                             <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider flex items-center gap-2">
-                                                <DollarSign size={16} className="text-brand" /> Compensation
+                                                <IndianRupee size={16} className="text-brand" /> Compensation
                                             </h3>
                                             <div className="p-4 bg-green-50 rounded-lg border border-green-100 flex items-center justify-between mb-4">
                                                 <div>
@@ -193,7 +193,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                                                     <p className="text-2xl font-black text-green-700">₹{employee.salary?.toLocaleString()}</p>
                                                 </div>
                                                 <div className="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center text-green-700">
-                                                    <DollarSign size={20} />
+                                                    <IndianRupee size={20} />
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">

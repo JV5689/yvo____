@@ -7,8 +7,8 @@ import {
     LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, Legend
 } from 'recharts';
 import {
-    Users, DollarSign, ShoppingBag, TrendingUp, TrendingDown,
-    Activity, Package, CreditCard, AlertCircle
+    Users, IndianRupee, ShoppingBag, TrendingUp, TrendingDown,
+    Activity, Package, CreditCard, AlertCircle, Headphones
 } from 'lucide-react';
 
 import SuperAdminDashboard from './super-admin/SuperAdminDashboard';
@@ -159,7 +159,7 @@ export default function DashboardHome() {
                 <KPICard
                     title="Total Revenue"
                     value={formatCurrency(stats.revenue)}
-                    icon={<DollarSign size={24} className="text-white" />}
+                    icon={<IndianRupee size={24} className="text-white" />}
                     color="bg-gradient-to-r from-blue-500 to-blue-600"
                     subtext="Lifetime earnings"
                 />
@@ -255,20 +255,25 @@ export default function DashboardHome() {
 
             {/* BOTTOM ACTIVITY / REPORTS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-gradient-to-br from-indigo-900 to-slate-900 rounded-xl p-6 text-white relative overflow-hidden">
-                    <div className="relative z-10">
-                        <h3 className="text-xl font-bold mb-2">Boost your Sales</h3>
-                        <p className="text-indigo-200 text-sm mb-4 max-w-sm">
-                            Analyze your top products and run targeted campaigns. You have {chartData.topProducts.length} active high-performing items.
+                <div className="lg:col-span-2 bg-gradient-to-br from-indigo-700 to-indigo-900 rounded-xl p-6 text-white relative overflow-hidden shadow-lg border border-indigo-600/20">
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                                <Headphones size={24} className="text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold">Customer Care</h3>
+                        </div>
+                        <p className="text-indigo-100 text-sm mb-6 max-w-sm leading-relaxed">
+                            Need help with your account or having technical issues? Contact our dedicated support team directly. We're here to assist you with any work or queries.
                         </p>
-                        <button
-                            onClick={() => navigate('/dashboard/analytics')}
-                            className="bg-white text-indigo-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100 transition"
+                        <a
+                            href="mailto:yvo.company@gmail.com?subject=Support%20Request%20-%20"
+                            className="inline-flex items-center justify-center w-fit bg-white text-indigo-900 px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-100 transition shadow-md"
                         >
-                            View Analytics
-                        </button>
+                            Email Support
+                        </a>
                     </div>
-                    <Activity className="absolute right-[-20px] bottom-[-20px] text-white opacity-5 w-40 h-40" />
+                    <Headphones className="absolute right-[-10px] bottom-[-10px] text-white opacity-5 w-44 h-44 -rotate-12" />
                 </div>
 
                 <div className="lg:col-span-1">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, TrendingUp, DollarSign, Receipt, Clock, Users, ArrowRight, CheckCircle } from 'lucide-react';
+import { Plus, TrendingUp, IndianRupee, Receipt, Clock, Users, ArrowRight, CheckCircle } from 'lucide-react';
 import api from '../../services/api';
 import { useUI } from '../../context/UIContext';
 
@@ -103,7 +103,7 @@ export default function Finance() {
                 <StatCard
                     title="Total Received"
                     value={formatCurrency(stats.totalReceived)}
-                    icon={<DollarSign size={24} className="text-green-600" />}
+                    icon={<IndianRupee size={24} className="text-green-600" />}
                     trend="Lifetime Payments"
                     bg="bg-green-50"
                 />

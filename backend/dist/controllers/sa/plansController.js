@@ -5,7 +5,7 @@ export const getPlans = async (req, res) => {
         const plans = await prisma.plan.findMany({
             where: { isArchived: false }
         });
-        res.json(plans);
+        res.json(plans.map((p) => ({ ...p, _id: p.id })));
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -14,15 +14,16 @@ export const getPlans = async (req, res) => {
 // POST /sa/plans
 export const createPlan = async (req, res) => {
     try {
-        const { defaultFlags, defaultLimits, ...rest } = req.body;
+        const { defaultFlags, defaultLimits, priceMonthly, ...rest } = req.body;
         const plan = await prisma.plan.create({
             data: {
                 ...rest,
+                priceMonthly: priceMonthly ? Number(priceMonthly) : 0,
                 defaultFlags: defaultFlags || {},
                 defaultLimits: defaultLimits || {}
             }
         });
-        res.status(201).json(plan);
+        res.status(201).json({ ...plan, _id: plan.id });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -31,12 +32,15 @@ export const createPlan = async (req, res) => {
 // PATCH /sa/plans/:id
 export const updatePlan = async (req, res) => {
     try {
-        const { defaultFlags, defaultLimits, ...otherUpdates } = req.body;
+        const { defaultFlags, defaultLimits, priceMonthly, ...otherUpdates } = req.body;
         console.log(`[SuperAdmin] Updating plan ${req.params.id}:`, req.body);
         let plan = await prisma.plan.findUnique({ where: { id: String(req.params.id) } });
         if (!plan)
             return res.status(404).json({ message: 'Plan not found' });
         const updatedData = { ...otherUpdates };
+        if (priceMonthly !== undefined) {
+            updatedData.priceMonthly = Number(priceMonthly);
+        }
         if (defaultFlags) {
             updatedData.defaultFlags = {
                 ...(plan.defaultFlags ? plan.defaultFlags : {}),
@@ -87,7 +91,7 @@ export const updatePlan = async (req, res) => {
                 console.error("[Sync] Error cleaning up overrides:", err);
             }
         }
-        res.json(plan);
+        res.json({ ...plan, _id: plan.id });
     }
     catch (error) {
         console.error("[SuperAdmin] Update Plan Error:", error);

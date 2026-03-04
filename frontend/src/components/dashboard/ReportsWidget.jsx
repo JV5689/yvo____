@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Download, Users, DollarSign, Receipt, ChevronRight } from 'lucide-react';
+import { FileText, Download, Users, IndianRupee, Receipt, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
@@ -120,7 +120,7 @@ export default function ReportsWidget() {
                     onClick={() => downloadCSV('payroll')}
                 />
                 <ReportButton
-                    icon={<DollarSign size={16} className="text-amber-600" />}
+                    icon={<IndianRupee size={16} className="text-amber-600" />}
                     label="Revenue Export (CSV)"
                     onClick={() => downloadCSV('revenue')}
                 />

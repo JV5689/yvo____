@@ -70,6 +70,7 @@ export const registerCompany = async (req, res) => {
 // POST /auth/login
 export const login = async (req, res) => {
     try {
+        console.log("Login attempt:", req.body.email);
         const { email, password } = req.body;
         const user = await prisma.user.findUnique({
             where: { email },
@@ -79,6 +80,7 @@ export const login = async (req, res) => {
                 }
             }
         });
+        console.log("User found:", user ? "YES" : "NO");
         if (user && user.passwordHash && (await bcrypt.compare(password, user.passwordHash))) {
             // Update last login
             await prisma.user.update({
@@ -99,10 +101,13 @@ export const login = async (req, res) => {
             });
         }
         else {
+            console.log("Invalid credentials for:", email);
             res.status(401).json({ message: 'Invalid email or password' });
         }
     }
     catch (error) {
+        console.error("LOGIN ERROR STACK:", error.stack);
+        console.error("LOGIN ERROR MESSAGE:", error.message);
         res.status(500).json({ message: error.message });
     }
 };

@@ -301,7 +301,7 @@ model plan {
   code          String   @unique(map: "Plan_code_key") @db.VarChar(125)
   name          String   @db.VarChar(125)
   priceMonthly  Float
-  currency      String   @default("USD") @db.VarChar(125)
+  currency      String   @default("INR") @db.VarChar(125)
   defaultFlags  Json?
   defaultLimits Json?
   isArchived    Boolean  @default(false)

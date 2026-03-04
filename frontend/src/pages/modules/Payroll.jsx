@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BadgeDollarSign, Search, Calendar, CheckCircle, Clock, Calculator, Trash2, FileText, Download } from 'lucide-react';
+import { IndianRupee, Search, Calendar, CheckCircle, Clock, Calculator, Trash2, FileText, Download } from 'lucide-react';
 import api from '../../services/api';
 import html2pdf from 'html2pdf.js';
 import { useUI } from '../../context/UIContext';
@@ -332,7 +332,7 @@ export default function Payroll() {
                                                 onClick={() => handleOpenPayModal(emp)}
                                                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
                                             >
-                                                <BadgeDollarSign size={14} /> Pay
+                                                <IndianRupee size={14} /> Pay
                                             </button>
                                         )}
                                     </td>

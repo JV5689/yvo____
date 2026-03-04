@@ -79,7 +79,7 @@ export const renderBlock = (block, data, options = {}) => {
             );
 
         case 'COMPANY_NAME':
-            return <div style={customStyle}>{companyConfig?.name || 'Your Company Name'}</div>;
+            return <div style={customStyle}>{companyConfig?.name || 'YVO'}</div>;
 
         case 'COMPANY_DETAILS':
             return (

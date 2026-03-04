@@ -4,8 +4,7 @@ import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import {
     LayoutDashboard, Building2, Ticket, Flag, Cloud, Database,
-    BarChart3, Shield, Settings, LogOut, Users, Calendar, FileText, DollarSign, ChevronDown, Menu, X
-
+    BarChart3, Shield, Settings, LogOut, Users, Calendar, FileText, IndianRupee, ChevronDown, Menu, X, HelpCircle
 } from 'lucide-react';
 
 export default function DashboardLayout() {
@@ -157,11 +156,8 @@ export default function DashboardLayout() {
 
             <aside className={`fixed inset-y-0 left-0 z-30 ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200 overflow-y-auto transform transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 group`}>
                 <div className={`flex h-16 items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-6'} border-b border-slate-100`}>
-                    <div className={`flex items-center overflow-hidden ${isSidebarCollapsed ? 'hidden' : 'flex'}`}>
-                        <div className="flex h-8 w-8 min-w-[32px] items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-sm shadow mr-3">
-                            YO
-                        </div>
-                        <span className="text-lg font-bold text-slate-800 tracking-tight truncate max-w-[120px]">{config?.company?.name || 'YVO Admin'}</span>
+                    <div className={`flex items-center ${isSidebarCollapsed ? 'hidden' : 'flex'}`}>
+                        <span className="text-lg font-bold text-slate-800 tracking-tight px-2">{config?.company?.name || 'YVO Admin'}</span>
                     </div>
 
                     <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">
@@ -270,6 +266,12 @@ export default function DashboardLayout() {
                         />
 
                         <SidebarItem icon={<Settings size={20} />} label="Settings" href="/dashboard/settings" collapsed={isSidebarCollapsed} />
+                        <SidebarItem
+                            icon={<HelpCircle size={20} />}
+                            label="Customer Care"
+                            href="mailto:yvo.company@gmail.com?subject=Support%20Request"
+                            collapsed={isSidebarCollapsed}
+                        />
                     </div>
 
                 </nav>
@@ -388,26 +390,42 @@ const SidebarItem = ({ icon, label, href, active, subItems, locked, collapsed })
         );
     }
 
+    const isExternal = href?.startsWith('mailto:') || href?.startsWith('http');
     const targetHref = href || (collapsed && subItems?.length > 0 ? subItems[0].href : "#");
 
-    return (
-        <Link
-            to={targetHref}
-            onClick={handleLockedClick}
-            title={collapsed ? label : ""}
-            className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 
+    const sharedProps = {
+        onClick: handleLockedClick,
+        title: collapsed ? label : "",
+        className: `flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 
       ${active
-                    ? 'bg-blue-50 text-blue-700 shadow-sm'
-                    : locked
-                        ? 'text-slate-400 cursor-not-allowed hover:bg-slate-50'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-        >
+                ? 'bg-blue-50 text-blue-700 shadow-sm'
+                : locked
+                    ? 'text-slate-400 cursor-not-allowed hover:bg-slate-50'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`
+    };
+
+    const content = (
+        <>
             <span className={active ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}>
                 {icon}
             </span>
             {!collapsed && label}
             {locked && !collapsed && <Lock size={14} className="ml-auto text-slate-400" />}
+        </>
+    );
+
+    if (isExternal) {
+        return (
+            <a href={targetHref} {...sharedProps}>
+                {content}
+            </a>
+        );
+    }
+
+    return (
+        <Link to={targetHref} {...sharedProps}>
+            {content}
         </Link>
     );
 };
