@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, User, Phone, MapPin, Mail, FileText, IndianRupee, History, Activity, Download, Edit, Search, Calendar as CalendarIcon, CreditCard, ChevronDown, CheckCircle2, Plus } from 'lucide-react';
 
 import Modal from '../Modal';
-import InvoiceViewerModal from '../invoice-builder/InvoiceViewerModal';
 
 export default function CustomerProfile() {
     const { id } = useParams();
@@ -21,8 +20,6 @@ export default function CustomerProfile() {
         date: new Date().toISOString().slice(0, 10),
         method: 'CASH'
     });
-    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
-    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [isSavingPayment, setIsSavingPayment] = useState(false);
 
     const handleReceivePayment = async (e) => {
@@ -106,18 +103,6 @@ export default function CustomerProfile() {
         }
     }, [id]);
 
-    const handleDownload = (e, invoice) => {
-        if (e) e.stopPropagation();
-        setSelectedInvoiceId(invoice.id || invoice._id);
-        setIsInvoiceModalOpen(true);
-    };
-
-    const handleEdit = (e, invoiceId) => {
-        if (e) e.stopPropagation();
-        setSelectedInvoiceId(invoiceId);
-        setIsInvoiceModalOpen(true);
-    };
-
     if (loading) return <div className="p-8"><div className="animate-pulse">Loading profile...</div></div>;
     if (!customer) return <div className="p-8">Customer not found.</div>;
 
@@ -169,13 +154,6 @@ export default function CustomerProfile() {
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => navigate(`/dashboard/invoices/new?customerId=${customer.id || customer._id}`)}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium shadow-sm hover:bg-indigo-700 transition"
-                    >
-                        <Plus size={16} />
-                        <span className="hidden sm:inline">Create Invoice</span>
-                    </button>
-                    <button
                         onClick={openCreatePaymentModal}
                         className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold shadow-sm hover:bg-green-200 transition"
                     >
@@ -186,16 +164,7 @@ export default function CustomerProfile() {
             </div>
 
             {/* Top Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
-                        <FileText size={24} />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-slate-500">Total Invoiced</p>
-                        <p className="text-2xl font-bold text-slate-800">₹{(customer.totalInvoiced || 0).toLocaleString()}</p>
-                    </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-green-50 text-green-600 rounded-lg">
                         <IndianRupee size={24} />
@@ -222,7 +191,6 @@ export default function CustomerProfile() {
                 <div className="flex border-b border-slate-200 bg-slate-50 px-2 pt-2 gap-2 overflow-x-auto">
                     {[
                         { id: 'overview', icon: <User size={16} />, label: 'Overview' },
-                        { id: 'invoices', icon: <FileText size={16} />, label: 'Invoices' },
                         { id: 'payments', icon: <IndianRupee size={16} />, label: 'Payments' },
                         { id: 'ledger', icon: <History size={16} />, label: 'Statement (Ledger)' }
                     ].map(tab => (
@@ -259,50 +227,6 @@ export default function CustomerProfile() {
                                     <span className="font-medium text-slate-800">{customer.taxId || 'N/A'}</span>
                                 </div>
                             </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'invoices' && (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-4 py-3">Date</th>
-                                        <th className="px-4 py-3">Invoice #</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3 text-right">Amount</th>
-                                        <th className="px-4 py-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {(customer.invoices || []).length === 0 ? (
-                                        <tr><td colSpan="4" className="text-center py-4 text-slate-500">No invoices found.</td></tr>
-                                    ) : (
-                                        (customer.invoices || []).map(inv => (
-                                            <tr key={inv.id || inv._id} className="hover:bg-slate-50 transition">
-                                                <td className="px-4 py-3">{new Date(inv.date).toLocaleDateString()}</td>
-                                                <td className="px-4 py-3 font-medium text-indigo-600 cursor-pointer" onClick={() => handleEdit(null, inv.id || inv._id)}>{inv.invoiceNumber}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${inv.status === 'PAID' ? 'bg-green-100 text-green-700' : inv.status === 'DRAFT' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                        {inv.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-medium">₹{inv.grandTotal.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <button onClick={(e) => handleDownload(e, inv)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition" title="Download">
-                                                            <Download size={16} />
-                                                        </button>
-                                                        <button onClick={(e) => handleEdit(e, inv.id || inv._id)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit">
-                                                            <Edit size={16} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
                         </div>
                     )}
 
@@ -483,13 +407,6 @@ export default function CustomerProfile() {
                     </div>
                 </form>
             </Modal>
-
-            <InvoiceViewerModal
-                invoiceId={selectedInvoiceId}
-                isOpen={isInvoiceModalOpen}
-                onClose={() => setIsInvoiceModalOpen(false)}
-                onEdited={fetchCustomerLedger}
-            />
         </div>
     );
 }

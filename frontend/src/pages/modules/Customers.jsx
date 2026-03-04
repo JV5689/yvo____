@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, User, Phone, FileText, IndianRupee, Eye, X } from 'lucide-react';
+import { Plus, Search, User, Phone, FileText, IndianRupee, Eye, X, Trash2, Trash, RotateCcw, Edit2 } from 'lucide-react';
+import { useUI } from '../../context/UIContext';
 
 export default function Customers() {
     const { config } = useOutletContext();
@@ -11,6 +12,10 @@ export default function Customers() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const { confirm } = useUI();
+    const [isViewDeleted, setIsViewDeleted] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentCustomerId, setCurrentCustomerId] = useState(null);
 
     // Payment Modal State
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -34,7 +39,7 @@ export default function Customers() {
             setLoading(true);
             const companyId = localStorage.getItem('companyId');
             if (!companyId) return;
-            const res = await api.get(`/customers?companyId=${companyId}`);
+            const res = await api.get(`/customers`, { params: { companyId, isDeleted: isViewDeleted } });
             setCustomers(res.data);
         } catch (error) {
             toast.error('Failed to load customers');
@@ -197,7 +202,7 @@ export default function Customers() {
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)}></div>
                     <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
                         <div className="flex items-center justify-between p-5 border-b border-slate-200">
-                            <h3 className="text-lg font-bold text-slate-800">Add New Customer</h3>
+                            <h3 className="text-lg font-bold text-slate-800">{isEditing ? 'Edit Customer' : 'Add New Customer'}</h3>
                             <button onClick={() => setIsAddModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg"><X size={20} /></button>
                         </div>
                         <form onSubmit={handleCreateCustomer} className="p-5 space-y-4">
