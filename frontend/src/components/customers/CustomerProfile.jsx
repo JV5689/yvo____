@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import InvoiceBuilder from '../../pages/modules/InvoiceBuilder';
+import html2pdf from 'html2pdf.js';
+import { injectPdfColorFix } from '../../utils/pdfColorFix';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { ArrowLeft, User, Phone, MapPin, Mail, FileText, IndianRupee, History, Activity, Download, Edit, Search, Calendar as CalendarIcon, CreditCard, ChevronDown, CheckCircle2, Plus } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Mail, FileText, IndianRupee, History, Activity, Download, Edit, Search, Calendar as CalendarIcon, CreditCard, ChevronDown, CheckCircle2, Plus, Eye, Trash2 } from 'lucide-react';
 
 import Modal from '../Modal';
 
@@ -14,6 +17,8 @@ export default function CustomerProfile() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview'); // overview, invoices, payments, ledger
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
     const [selectedPaymentId, setSelectedPaymentId] = useState(null);
     const [paymentData, setPaymentData] = useState({
         amount: '',
@@ -82,6 +87,121 @@ export default function CustomerProfile() {
             method: payment.method || 'CASH'
         });
         setIsPaymentModalOpen(true);
+    };
+
+    const handleSeeInvoice = (id) => {
+        setSelectedInvoiceId(id);
+        setIsInvoiceModalOpen(true);
+    };
+
+    const handleDownloadInvoice = async (invoice) => {
+        const element = document.createElement('div');
+        element.style.width = '210mm';
+        element.style.padding = '10mm';
+        element.style.background = 'white';
+        element.style.color = 'black';
+
+        const subtotal = (invoice.items || []).reduce((s, i) => s + (i.total || 0), 0);
+        const taxRate = invoice.taxRate !== undefined ? invoice.taxRate : 10;
+        const tax = subtotal * (taxRate / 100);
+        const total = subtotal + tax;
+
+        const itemsRows = (invoice.items || []).map(item => `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 12px 15px; color: #334155; font-size: 13px;">${item.description || 'Item'}</td>
+                <td style="padding: 12px 15px; text-align: center; color: #64748b; font-size: 13px;">${item.quantity}</td>
+                <td style="padding: 12px 15px; text-align: right; color: #64748b; font-size: 13px;">₹${item.price?.toFixed(2)}</td>
+                <td style="padding: 12px 15px; text-align: right; color: #0f172a; font-weight: 600; font-size: 13px;">₹${item.total?.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        const company = config?.company || {};
+
+        element.innerHTML = `
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5;">
+                <div style="height: 15px; background: #312e81; margin-bottom: 30px;"></div>
+                <div style="padding: 0 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 50px;">
+                        <div style="width: 50%;">
+                            ${company.logo ? `<img src="${company.logo}" style="height: 80px; margin-bottom: 15px; display: block;" />` : ''}
+                            <h2 style="margin: 0; color: #0f172a; font-size: 20px;">${company.name || 'YVO Company'}</h2>
+                            <p style="margin: 5px 0 0; font-size: 13px; color: #64748b;">
+                                ${company.address || ''}<br/>
+                                ${company.email ? `${company.email}<br/>` : ''}
+                                ${company.phone ? `${company.phone}<br/>` : ''}
+                            </p>
+                        </div>
+                        <div style="width: 40%; text-align: right;">
+                            <h1 style="font-size: 42px; font-weight: 900; color: #e2e8f0; margin: 0; letter-spacing: -2px;">INVOICE</h1>
+                            <div style="margin-top: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Invoice #</span>
+                                    <span style="font-family: monospace; font-weight: bold; color: #334155;">${invoice.invoiceNumber}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Date</span>
+                                    <span style="font-size: 13px; font-weight: 500;">${new Date(invoice.date).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 50px; padding: 20px 0; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                        <div style="width: 45%;">
+                            <span style="font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px;">Bill To</span>
+                            <h3 style="margin: 0 0 5px; font-size: 16px; color: #0f172a;">${customer.name}</h3>
+                            <p style="margin: 0; font-size: 13px; color: #64748b;">${customer.address || ''}</p>
+                        </div>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
+                        <thead>
+                            <tr style="background: #1e293b; color: white;">
+                                <th style="padding: 12px 15px; text-align: left; font-size: 13px; font-weight: 600;">Description</th>
+                                <th style="padding: 12px 15px; text-align: center; font-size: 13px; font-weight: 600; width: 60px;">Qty</th>
+                                <th style="padding: 12px 15px; text-align: right; font-size: 13px; font-weight: 600; width: 100px;">Price</th>
+                                <th style="padding: 12px 15px; text-align: right; font-size: 13px; font-weight: 600; width: 100px;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemsRows}</tbody>
+                    </table>
+                    <div style="display: flex; justify-content: flex-end;">
+                        <div style="width: 300px; background: #f8fafc; padding: 20px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px;">
+                                <span style="color: #64748b; font-weight: 500;">Subtotal</span>
+                                <span style="color: #0f172a; font-weight: 600;">₹${subtotal.toFixed(2)}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 13px;">
+                                <span style="color: #64748b; font-weight: 500;">Tax (${taxRate}%)</span>
+                                <span style="color: #0f172a; font-weight: 600;">₹${tax.toFixed(2)}</span>
+                            </div>
+                            <div style="height: 1px; background: #e2e8f0; margin-bottom: 15px;"></div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #312e81; font-weight: 700; font-size: 16px;">Total</span>
+                                <span style="color: #312e81; font-weight: 800; font-size: 20px;">₹${total.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        try {
+            toast.loading('Generating PDF...', { id: 'pdf-gen' });
+            await html2pdf().set({
+                margin: 0,
+                filename: `Invoice-${invoice.invoiceNumber}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    onclone: (clonedDoc) => injectPdfColorFix(clonedDoc),
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save();
+            toast.success('PDF downloaded!', { id: 'pdf-gen' });
+        } catch (e) {
+            toast.error('Failed to generate PDF', { id: 'pdf-gen' });
+        }
     };
 
     const fetchCustomerLedger = async () => {
@@ -191,6 +311,7 @@ export default function CustomerProfile() {
                 <div className="flex border-b border-slate-200 bg-slate-50 px-2 pt-2 gap-2 overflow-x-auto">
                     {[
                         { id: 'overview', icon: <User size={16} />, label: 'Overview' },
+                        { id: 'invoices', icon: <FileText size={16} />, label: 'Invoices' },
                         { id: 'payments', icon: <IndianRupee size={16} />, label: 'Payments' },
                         { id: 'ledger', icon: <History size={16} />, label: 'Statement (Ledger)' }
                     ].map(tab => (
@@ -227,6 +348,59 @@ export default function CustomerProfile() {
                                     <span className="font-medium text-slate-800">{customer.taxId || 'N/A'}</span>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'invoices' && (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-600">
+                                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-4 py-3">Invoice #</th>
+                                        <th className="px-4 py-3">Date</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3 text-right">Amount</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {(customer.invoices || []).length === 0 ? (
+                                        <tr><td colSpan="5" className="text-center py-4 text-slate-500">No invoices found.</td></tr>
+                                    ) : (
+                                        (customer.invoices || []).map(inv => (
+                                            <tr key={inv.id || inv._id} className="hover:bg-slate-50 transition cursor-pointer" onClick={() => handleSeeInvoice(inv.id || inv._id)}>
+                                                <td className="px-4 py-3 font-medium text-indigo-600">#{inv.invoiceNumber}</td>
+                                                <td className="px-4 py-3">{new Date(inv.date).toLocaleDateString()}</td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${inv.status === 'PAID' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                        inv.status === 'OVERDUE' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                            'bg-slate-50 text-slate-600 border-slate-200'
+                                                        }`}>
+                                                        {inv.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-medium text-slate-900">₹{inv.grandTotal?.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right flex justify-end gap-1">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(inv); }}
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition"
+                                                        title="Download PDF"
+                                                    >
+                                                        <Download size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleSeeInvoice(inv.id || inv._id); }}
+                                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                                                        title="View/Edit"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     )}
 
@@ -406,6 +580,27 @@ export default function CustomerProfile() {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* View / Edit Invoice Modal */}
+            <Modal
+                isOpen={isInvoiceModalOpen}
+                onClose={() => {
+                    setIsInvoiceModalOpen(false);
+                    fetchCustomerLedger(); // Refresh data after closing
+                }}
+                title="Invoice Details"
+                maxWidth="max-w-6xl"
+            >
+                {selectedInvoiceId && (
+                    <InvoiceBuilder
+                        invoiceId={selectedInvoiceId}
+                        onClose={() => {
+                            setIsInvoiceModalOpen(false);
+                            fetchCustomerLedger();
+                        }}
+                    />
+                )}
             </Modal>
         </div>
     );
