@@ -10,13 +10,17 @@ datasource db {
 model AuditLog {
   id          String   @id @default(uuid())
   companyId   String?
+  company     Company? @relation("CompanyAuditLogs", fields: [companyId], references: [id])
   actorId     String
   action      String
   targetId    String?
-  targetModel String?
+  targetType  String?  // Renamed from targetModel to match prompt
   details     Json?
-  ipAddress   String?
+  ip          String?  // Aligned with prompt "IP"
   userAgent   String?
+  path        String?
+  method      String?
+  statusCode  Int?
   timestamp   DateTime @default(now())
 
   @@map("auditlog")
@@ -25,6 +29,7 @@ model AuditLog {
 model BackupJob {
   id            String   @id @default(uuid())
   companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
   createdBy     Json
   backupId      String   @unique(map: "BackupJob_backupId_key")
   status        String   @default("QUEUED")
@@ -130,6 +135,17 @@ model Company {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  plan                Plan      @relation(fields: [planId], references: [id])
+  memberships         UserMembership[]
+  employees           Employee[]
+  customers           Customer[]
+  invoices            Invoice[]
+  inventory           InventoryItem[]
+  backups             BackupJob[]
+  expenses            Expense[]
+  payments            Payment[]
+  auditLogs           AuditLog[] @relation("CompanyAuditLogs")
+
   @@index([planId], map: "company_planId_fkey")
   @@map("company")
 }
@@ -137,6 +153,7 @@ model Company {
 model Customer {
   id             String   @id @default(uuid()) @db.VarChar(125)
   companyId      String   @db.VarChar(125)
+  company        Company  @relation(fields: [companyId], references: [id])
   name           String   @db.VarChar(125)
   email          String?  @db.VarChar(125)
   phone          String?  @db.VarChar(125)
@@ -164,6 +181,7 @@ model Device {
 model Employee {
   id                 String   @id @default(uuid()) @db.VarChar(125)
   companyId          String   @db.VarChar(125)
+  company            Company  @relation(fields: [companyId], references: [id])
   firstName          String   @db.VarChar(125)
   lastName           String   @db.VarChar(125)
   email              String   @unique(map: "Employee_email_key") @db.VarChar(125)
@@ -198,6 +216,7 @@ model EmployeeCategory {
 model Expense {
   id            String   @id @default(uuid()) @db.VarChar(125)
   companyId     String   @db.VarChar(125)
+  company       Company  @relation(fields: [companyId], references: [id])
   category      String   @db.VarChar(125)
   amount        Float
   date          DateTime @default(now())
@@ -227,6 +246,7 @@ model FeatureFlag {
 model InventoryItem {
   id             String   @id @default(uuid()) @db.VarChar(125)
   companyId      String   @db.VarChar(125)
+  company        Company  @relation(fields: [companyId], references: [id])
   sku            String   @db.VarChar(125)
   name           String   @db.VarChar(125)
   description    String?  @db.Text
@@ -246,6 +266,7 @@ model InventoryItem {
 model Invoice {
   id               String   @id @default(uuid()) @db.VarChar(125)
   companyId        String   @db.VarChar(125)
+  company          Company  @relation(fields: [companyId], references: [id])
   invoiceNumber    String   @db.VarChar(125)
   customerId       String   @db.VarChar(125)
   customerName     String?  @db.VarChar(125)
@@ -334,6 +355,7 @@ model LeaveRequest {
 model Payment {
   id         String   @id @default(uuid()) @db.VarChar(125)
   companyId  String   @db.VarChar(125)
+  company    Company  @relation(fields: [companyId], references: [id])
   customerId String   @db.VarChar(125)
   amount     Float
   date       DateTime @default(now())
@@ -365,6 +387,7 @@ model Plan {
   defaultLimits Json?
   isArchived    Boolean  @default(false)
   updatedAt     DateTime @updatedAt
+  companies     Company[]
 
   @@map("plan")
 }
@@ -401,17 +424,21 @@ model SalaryRecord {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.VarChar(125)
-  email        String    @unique(map: "User_email_key") @db.VarChar(125)
-  passwordHash String?   @db.VarChar(125)
-  googleId     String?   @db.VarChar(125)
-  fullName     String?   @db.VarChar(125)
-  avatarUrl    String?   @db.LongText
-  isSuperAdmin Boolean   @default(false)
-  refreshToken String?   @db.Text
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                 String    @id @default(uuid()) @db.VarChar(125)
+  email              String    @unique(map: "User_email_key") @db.VarChar(125)
+  passwordHash       String?   @db.VarChar(125)
+  googleId           String?   @db.VarChar(125)
+  fullName           String?   @db.VarChar(125)
+  avatarUrl          String?   @db.LongText
+  isSuperAdmin       Boolean   @default(false)
+  hashedRefreshToken String?   @db.Text
+  lastIp             String?   @db.VarChar(125)
+  lastUserAgent      String?   @db.Text
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  memberships        UserMembership[]
 
   @@map("user")
 }
@@ -422,6 +449,9 @@ model UserMembership {
   companyId String   @db.VarChar(125)
   role      String   @default("EMPLOYEE") @db.VarChar(125)
   joinedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
 
   @@unique([userId, companyId], map: "UserMembership_userId_companyId_key")
   @@index([companyId], map: "usermembership_companyId_fkey")

@@ -1,201 +1,162 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../src/config/db.js';
+import { AuthRequest } from '../../src/middleware/auth.js';
+import { AppError } from '../../src/middleware/errorHandler.js';
 
 // Get all customers for a company
 export const getCustomers = async (req: Request, res: Response) => {
-    try {
-        const { companyId } = req.query; // Or from auth middleware if available like req.user.companyId
+    const { companyId } = (req as AuthRequest).user!;
 
-        if (!companyId) {
-            return res.status(400).json({ message: 'Company ID is required' });
-        }
+    const customers = await prisma.customer.findMany({
+        where: { companyId: companyId!, isDeleted: false },
+        include: {
+            invoices: {
+                where: { isDeleted: false, status: { notIn: ['DRAFT', 'CANCELLED'] } }
+            }
+        },
+        orderBy: { lastModifiedAt: 'desc' }
+    });
 
-        const customers = await prisma.customer.findMany({
-            where: { companyId: String(companyId), isDeleted: false },
-            include: {
-                invoices: {
-                    where: { isDeleted: false, status: { notIn: ['DRAFT', 'CANCELLED'] } }
-                }
-            },
-            orderBy: { lastModifiedAt: 'desc' }
+    const mappedCustomers = await Promise.all(customers.map(async (customer) => {
+        const totalInvoiced = customer.invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+
+        const payments = await prisma.payment.findMany({
+            where: { customerId: customer.id, isDeleted: false }
         });
+        const totalReceived = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-        // Prisma doesn't do deep aggregation easily like Mongoose $lookup -> $project in a single pass.
-        // We will fetch payments separately or map them out. However, currently Prisma Schema doesn't
-        // map `Payment` model yet to this project (from what we can see, or at least no explicit relation 
-        // back to customer from Payments directly if invoices are the link). Let's assume Payments is linked
-        // to Invoice or Customer. Assuming Invoice.
+        return {
+            ...customer,
+            invoices: undefined,
+            totalInvoiced,
+            totalReceived,
+            totalDue: Math.max(0, totalInvoiced - totalReceived)
+        };
+    }));
 
-        // Manual Map to preserve response
-        const mappedCustomers = await Promise.all(customers.map(async (customer) => {
-            const totalInvoiced = customer.invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-
-            // Fetch payments to calculate actual received amount
-            const payments = await prisma.payment.findMany({
-                where: { customerId: customer.id, isDeleted: false }
-            });
-            const totalReceived = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-
-            return {
-                ...customer,
-                invoices: undefined, // remove from output like Mongoose $project
-                totalInvoiced,
-                totalReceived,
-                totalDue: Math.max(0, totalInvoiced - totalReceived)
-            };
-        }));
-
-        res.status(200).json(mappedCustomers);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(200).json(mappedCustomers);
 };
 
 // Get single customer
 export const getCustomerById = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const customer = await prisma.customer.findUnique({ where: { id: String(id) } });
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
 
-        if (!customer || customer.isDeleted) {
-            return res.status(404).json({ message: 'Customer not found' });
-        }
+    const customer = await prisma.customer.findFirst({
+        where: { id: String(id), companyId: companyId! }
+    });
 
-        res.status(200).json(customer);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
+    if (!customer || customer.isDeleted) {
+        throw new AppError('Customer not found', 404);
     }
+
+    res.status(200).json(customer);
 };
 
-// Get single customer ledger (customer + invoices + payments + totals)
+// Get single customer ledger
 export const getCustomerLedger = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const customerId = String(id);
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
 
-        const customer = await prisma.customer.findUnique({
-            where: { id: customerId },
-            include: {
-                invoices: {
-                    where: { isDeleted: false },
-                    include: { items: true },
-                    orderBy: { date: 'desc' },
-                },
-                payments: {
-                    where: { isDeleted: false },
-                    orderBy: { date: 'desc' },
-                }
+    const customer = await prisma.customer.findFirst({
+        where: { id: String(id), companyId: companyId! },
+        include: {
+            invoices: {
+                where: { isDeleted: false },
+                include: { items: true },
+                orderBy: { date: 'desc' },
+            },
+            payments: {
+                where: { isDeleted: false },
+                orderBy: { date: 'desc' },
             }
-        });
-
-        if (!customer || customer.isDeleted) {
-            return res.status(404).json({ message: 'Customer not found' });
         }
+    });
 
-        const totalInvoiced = customer.invoices
-            .filter(inv => inv.status !== 'DRAFT' && inv.status !== 'CANCELLED')
-            .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-
-        const totalReceived = customer.payments
-            .reduce((sum, pay) => sum + (pay.amount || 0), 0);
-
-        const result = {
-            ...customer,
-            totalInvoiced,
-            totalReceived,
-            totalDue: Math.max(0, totalInvoiced - totalReceived),
-        };
-
-        res.status(200).json(result);
-    } catch (error: any) {
-        console.error('Error fetching customer ledger:', error.message, error);
-        res.status(500).json({ message: error.message || 'Server error' });
+    if (!customer || customer.isDeleted) {
+        throw new AppError('Customer not found', 404);
     }
+
+    const totalInvoiced = customer.invoices
+        .filter(inv => inv.status !== 'DRAFT' && inv.status !== 'CANCELLED')
+        .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+
+    const totalReceived = customer.payments
+        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+
+    const result = {
+        ...customer,
+        totalInvoiced,
+        totalReceived,
+        totalDue: Math.max(0, totalInvoiced - totalReceived),
+    };
+
+    res.status(200).json(result);
 };
 
 // Create customer
 export const createCustomer = async (req: Request, res: Response) => {
-    try {
-        const { companyId, name, email, phone, address, taxId } = req.body;
+    const { companyId } = (req as AuthRequest).user!;
+    const { name, email, phone, address, taxId } = req.body;
 
-        if (!companyId || !name) {
-            return res.status(400).json({ message: 'Company ID and Name are required' });
+    const newCustomer = await prisma.customer.create({
+        data: {
+            companyId: companyId!,
+            name,
+            email,
+            phone,
+            address,
+            taxId
         }
+    });
 
-        const newCustomer = await prisma.customer.create({
-            data: {
-                companyId: String(companyId),
-                name,
-                email,
-                phone,
-                address,
-                taxId
-            }
-        });
-
-        res.status(201).json(newCustomer);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(201).json(newCustomer);
 };
 
 // Update customer
 export const updateCustomer = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body;
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
+    const updates = { ...req.body };
+    delete updates.companyId;
 
-        const customer = await prisma.customer.update({
-            where: { id: String(id) },
-            data: { ...updates, lastModifiedAt: new Date() }
-        });
+    const result = await prisma.customer.updateMany({
+        where: { id: String(id), companyId: companyId! },
+        data: { ...updates, lastModifiedAt: new Date() }
+    });
 
-        if (!customer) {
-            return res.status(404).json({ message: 'Customer not found' });
-        }
+    if (result.count === 0) throw new AppError('Customer not found', 404);
 
-        res.status(200).json(customer);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    const updated = await prisma.customer.findUnique({ where: { id: String(id) } });
+    res.status(200).json(updated);
 };
 
-// Delete (Soft delete) customer
+// Delete (Soft)
 export const deleteCustomer = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
 
-        const customer = await prisma.customer.update({
-            where: { id: String(id) },
-            data: { isDeleted: true, lastModifiedAt: new Date() }
-        });
+    const result = await prisma.customer.updateMany({
+        where: { id: String(id), companyId: companyId! },
+        data: { isDeleted: true, lastModifiedAt: new Date() }
+    });
 
-        if (!customer) {
-            return res.status(404).json({ message: 'Customer not found' });
-        }
+    if (result.count === 0) throw new AppError('Customer not found', 404);
 
-        res.status(200).json({ message: 'Customer deleted successfully' });
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(200).json({ message: 'Customer deleted successfully' });
 };
 
-// Restore (Undo soft delete) customer
+// Restore
 export const restoreCustomer = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
 
-        const customer = await prisma.customer.update({
-            where: { id: String(id) },
-            data: { isDeleted: false, lastModifiedAt: new Date() }
-        });
+    const result = await prisma.customer.updateMany({
+        where: { id: String(id), companyId: companyId! },
+        data: { isDeleted: false, lastModifiedAt: new Date() }
+    });
 
-        if (!customer) {
-            return res.status(404).json({ message: 'Customer not found' });
-        }
+    if (result.count === 0) throw new AppError('Customer not found', 404);
 
-        res.status(200).json({ message: 'Customer restored successfully' });
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(200).json({ message: 'Customer restored successfully' });
 };

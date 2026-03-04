@@ -1,10 +1,14 @@
 import express from 'express';
 import * as authController from '../controllers/authController.js';
+import { validate } from '../src/middleware/validate.js';
+import { loginSchema, registerSchema } from '../src/security/schemas.js';
+import { authenticate } from '../src/middleware/auth.js';
 
 const router = express.Router();
 
-router.post('/register-company', authController.registerCompany);
-router.post('/login', authController.login);
-// router.post('/google', authController.googleLogin);
+router.post('/register-company', validate({ body: registerSchema }), authController.registerCompany);
+router.post('/login', validate({ body: loginSchema }), authController.login);
+router.post('/refresh', authController.refresh);
+router.post('/logout', authenticate, authController.logout);
 
 export default router;

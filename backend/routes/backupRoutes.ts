@@ -1,16 +1,17 @@
 import express from 'express';
 import * as backupController from '../controllers/backupController.js';
-import { requireAuth } from '../src/middleware/auth.middleware.js';
-import { requireRoles } from '../src/middleware/role.middleware.js';
+import { authenticate, authorize } from '../src/middleware/auth.js';
+import { tenantIsolation } from '../src/middleware/tenant.js';
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(authenticate);
+router.use(tenantIsolation);
 
-router.post('/', requireRoles('OWNER', 'ADMIN', 'SUPER_ADMIN'), backupController.createBackup);
-router.get('/', requireRoles('OWNER', 'ADMIN', 'SUPER_ADMIN'), backupController.getBackups);
-router.get('/:id/status', requireRoles('OWNER', 'ADMIN', 'SUPER_ADMIN'), backupController.getBackupStatus);
-router.get('/:id/download', requireRoles('OWNER', 'ADMIN', 'SUPER_ADMIN'), backupController.downloadBackup);
-router.delete('/:id', requireRoles('OWNER', 'ADMIN', 'SUPER_ADMIN'), backupController.deleteBackup);
+router.post('/', authorize('OWNER', 'ADMIN'), backupController.createBackup);
+router.get('/', authorize('OWNER', 'ADMIN'), backupController.getBackups);
+router.get('/:id', authorize('OWNER', 'ADMIN'), backupController.getBackupStatus);
+router.get('/:id/download', authorize('OWNER', 'ADMIN'), backupController.downloadBackup);
+router.delete('/:id', authorize('OWNER', 'ADMIN'), backupController.deleteBackup);
 
 export default router;
