@@ -7,4 +7,5 @@ router.get('/', paymentController.getPayments);
 router.post('/', paymentController.createPayment);
 router.patch('/:id', paymentController.updatePayment);
 router.delete('/:id', paymentController.deletePayment);
+router.patch('/:id/restore', paymentController.restorePayment);
 export default router;

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, User, Phone, FileText, IndianRupee, Eye } from 'lucide-react';
-import GlobalModal from '../../components/layout/GlobalModal';
+import { Plus, Search, User, Phone, FileText, IndianRupee, Eye, X } from 'lucide-react';
 
 export default function Customers() {
     const { config } = useOutletContext();
@@ -52,7 +51,7 @@ export default function Customers() {
         e.preventDefault();
         try {
             await api.post('/customers', {
-                companyId: config.company._id,
+                companyId: localStorage.getItem('companyId'),
                 ...formData
             });
             toast.success('Customer created successfully');
@@ -72,7 +71,7 @@ export default function Customers() {
 
             await api.post('/client-payments', {
                 companyId: companyId,
-                customerId: selectedCustomerForPayment._id,
+                customerId: selectedCustomerForPayment.id || selectedCustomerForPayment._id,
                 amount: parseFloat(paymentData.amount),
                 date: paymentData.date,
                 method: paymentData.method
@@ -193,138 +192,79 @@ export default function Customers() {
             </div>
 
             {/* Add Customer Modal */}
-            <GlobalModal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                title="Add New Customer"
-                maxWidth="md"
-            >
-                <form onSubmit={handleCreateCustomer} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name *</label>
-                        <input
-                            type="text"
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        />
+            {isAddModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)}></div>
+                    <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between p-5 border-b border-slate-200">
+                            <h3 className="text-lg font-bold text-slate-800">Add New Customer</h3>
+                            <button onClick={() => setIsAddModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg"><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleCreateCustomer} className="p-5 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name *</label>
+                                <input type="text" required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
+                                <input type="tel" required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email <span className="text-slate-400 font-normal">(optional)</span></label>
+                                <input type="email" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Address <span className="text-slate-400 font-normal">(optional)</span></label>
+                                <textarea className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="2" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}></textarea>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Tax ID / GST <span className="text-slate-400 font-normal">(optional)</span></label>
+                                <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" value={formData.taxId} onChange={(e) => setFormData({ ...formData, taxId: e.target.value })} />
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3 border-t">
+                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">Save Customer</button>
+                            </div>
+                        </form>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
-                        <input
-                            type="tel"
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Email <span className="text-slate-400 font-normal">(optional)</span></label>
-                        <input
-                            type="email"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Address <span className="text-slate-400 font-normal">(optional)</span></label>
-                        <textarea
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            rows="2"
-                            value={formData.address}
-                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        ></textarea>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Tax ID / GST <span className="text-slate-400 font-normal">(optional)</span></label>
-                        <input
-                            type="text"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            value={formData.taxId}
-                            onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
-                        />
-                    </div>
-                    <div className="pt-4 flex justify-end gap-3 border-t">
-                        <button
-                            type="button"
-                            onClick={() => setIsAddModalOpen(false)}
-                            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg"
-                        >
-                            Save Customer
-                        </button>
-                    </div>
-                </form>
-            </GlobalModal>
+                </div>
+            )}
 
             {/* Receive Payment Modal */}
-            <GlobalModal
-                isOpen={isPaymentModalOpen}
-                onClose={() => setIsPaymentModalOpen(false)}
-                title={`Receive Payment: ${selectedCustomerForPayment?.name}`}
-                maxWidth="sm"
-            >
-                <form onSubmit={handleReceivePayment} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹) *</label>
-                        <input
-                            type="number"
-                            required
-                            min="1"
-                            step="0.01"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                            value={paymentData.amount}
-                            onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
-                        />
+            {isPaymentModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)}></div>
+                    <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between p-5 border-b border-slate-200">
+                            <h3 className="text-lg font-bold text-slate-800">Receive Payment: {selectedCustomerForPayment?.name}</h3>
+                            <button onClick={() => setIsPaymentModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg"><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleReceivePayment} className="p-5 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹) *</label>
+                                <input type="number" required min="1" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" value={paymentData.amount} onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                                <input type="date" required className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" value={paymentData.date} onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
+                                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" value={paymentData.method} onChange={(e) => setPaymentData({ ...paymentData, method: e.target.value })}>
+                                    <option value="CASH">Cash</option>
+                                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                                    <option value="UPI">UPI / Online</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3 border-t">
+                                <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg">Save Payment</button>
+                            </div>
+                        </form>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
-                        <input
-                            type="date"
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                            value={paymentData.date}
-                            onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
-                        <select
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                            value={paymentData.method}
-                            onChange={(e) => setPaymentData({ ...paymentData, method: e.target.value })}
-                        >
-                            <option value="CASH">Cash</option>
-                            <option value="BANK_TRANSFER">Bank Transfer</option>
-                            <option value="UPI">UPI / Online</option>
-                            <option value="CHEQUE">Cheque</option>
-                        </select>
-                    </div>
-                    <div className="pt-4 flex justify-end gap-3 border-t">
-                        <button
-                            type="button"
-                            onClick={() => setIsPaymentModalOpen(false)}
-                            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg"
-                        >
-                            Save Payment
-                        </button>
-                    </div>
-                </form>
-            </GlobalModal>
+                </div>
+            )}
         </div>
     );
 }

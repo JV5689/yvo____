@@ -13,6 +13,7 @@ router.get('/companies/:id', companiesController.getCompanyById);
 router.post('/companies', companiesController.createCompany);
 router.patch('/companies/:id/status', companiesController.updateCompanyStatus);
 router.patch('/companies/:id/plan', companiesController.updateCompanyPlan);
+router.patch('/companies/:id/password', companiesController.updateCompanyPassword);
 router.patch('/companies/:id/flags', companiesController.updateCompanyFlags);
 router.delete('/companies/:id', companiesController.deleteCompany);
 // Plans

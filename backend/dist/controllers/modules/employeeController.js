@@ -13,7 +13,7 @@ export const getSalaryRecords = async (req, res) => {
             query.employeeId = employeeId;
         const records = await prisma.salaryRecord.findMany({
             where: query,
-            include: { employee: { select: { firstName: true, lastName: true, position: true } } },
+            include: { employee: { select: { firstName: true, lastName: true } } },
             orderBy: { paymentDate: 'desc' }
         });
         res.status(200).json(records);
@@ -200,8 +200,6 @@ export const createEmployee = async (req, res) => {
                 email,
                 phone,
                 password: hashedPassword,
-                position,
-                department,
                 salary: Number(salary),
                 status,
                 dateHired: dateHired ? new Date(dateHired) : new Date(),
@@ -231,18 +229,7 @@ export const updateEmployee = async (req, res) => {
         if (!currentEmployee) {
             return res.status(404).json({ message: 'Employee not found' });
         }
-        // Check if salary is being updated and is different
-        let newSalaryHistory = undefined;
-        if (updates.salary && Number(updates.salary) !== currentEmployee.salary) {
-            newSalaryHistory = {
-                amount: currentEmployee.salary,
-                changeDate: new Date()
-            };
-        }
         const updateData = { ...updates };
-        if (newSalaryHistory) {
-            updateData.salaryHistory = { create: newSalaryHistory };
-        }
         const employee = await prisma.employee.update({
             where: { id: String(id) },
             data: updateData
@@ -461,7 +448,7 @@ export const getLeaveRequests = async (req, res) => {
             query.employeeId = String(employeeId);
         const leaves = await prisma.leaveRequest.findMany({
             where: query,
-            include: { employee: { select: { firstName: true, lastName: true, position: true } } },
+            include: { employee: { select: { firstName: true, lastName: true } } },
             orderBy: { createdAt: 'desc' }
         });
         res.status(200).json(leaves);

@@ -8,7 +8,7 @@ export default function SuperAdminLogin() {
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { loginSuperAdmin } = useAuth();
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -21,7 +21,7 @@ export default function SuperAdminLogin() {
         setError(null);
 
         try {
-            const user = await login(formData.email, formData.password);
+            const user = await loginSuperAdmin(formData.email, formData.password);
 
             if (user.isSuperAdmin || user.role === 'SUPER_ADMIN') {
                 navigate('/dashboard');

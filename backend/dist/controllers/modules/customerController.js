@@ -23,18 +23,17 @@ export const getCustomers = async (req, res) => {
         // Manual Map to preserve response
         const mappedCustomers = await Promise.all(customers.map(async (customer) => {
             const totalInvoiced = customer.invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-            // In a true implementation, fetch payments from the DB for this customer.
-            // If Payment model has customerId:
-            // const payments = await prisma.payment.findMany({ where: { customerId: customer.id, isDeleted: false } });
-            // const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
-            const payments = []; // Defaulting since Payment schema logic might need refinement here
-            const totalReceived = 0;
+            // Fetch payments to calculate actual received amount
+            const payments = await prisma.payment.findMany({
+                where: { customerId: customer.id, isDeleted: false }
+            });
+            const totalReceived = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
             return {
                 ...customer,
                 invoices: undefined, // remove from output like Mongoose $project
                 totalInvoiced,
                 totalReceived,
-                totalDue: totalInvoiced - totalReceived
+                totalDue: Math.max(0, totalInvoiced - totalReceived)
             };
         }));
         res.status(200).json(mappedCustomers);
@@ -150,6 +149,23 @@ export const deleteCustomer = async (req, res) => {
             return res.status(404).json({ message: 'Customer not found' });
         }
         res.status(200).json({ message: 'Customer deleted successfully' });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+// Restore (Undo soft delete) customer
+export const restoreCustomer = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const customer = await prisma.customer.update({
+            where: { id: String(id) },
+            data: { isDeleted: false, lastModifiedAt: new Date() }
+        });
+        if (!customer) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+        res.status(200).json({ message: 'Customer restored successfully' });
     }
     catch (error) {
         res.status(500).json({ message: error.message });

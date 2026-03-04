@@ -3,7 +3,7 @@ import api from '../../services/api';
 import {
     Search, Filter, MoreHorizontal, Download,
     ChevronDown, HardDrive, Settings, X, Save,
-    Calendar, CreditCard, Building, User, Eye, Layers, Plus, Trash2
+    Calendar, CreditCard, Building, User, Eye, Layers, Plus, Trash2, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useUI } from '../../context/UIContext';
@@ -24,6 +24,7 @@ export default function Companies() {
     const [selectedPlanId, setSelectedPlanId] = useState('');
     const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('');
     const [status, setStatus] = useState('active');
+    const [newPassword, setNewPassword] = useState('');
 
     useEffect(() => {
         fetchCompanies();
@@ -70,6 +71,10 @@ export default function Companies() {
                 setSubscriptionEndsAt('');
             }
             setStatus(company.subscriptionStatus || 'active');
+        }
+
+        if (mode === 'password') {
+            setNewPassword('');
         }
     };
 
@@ -136,6 +141,21 @@ export default function Companies() {
             closeModal();
         } catch (err) {
             toast.error("Failed to update features: " + err.message);
+        }
+    };
+
+    const handleSavePassword = async () => {
+        if (!newPassword || newPassword.length < 6) {
+            toast.error("Password must be at least 6 characters long.");
+            return;
+        }
+
+        try {
+            await api.patch(`/sa/companies/${selectedCompany._id}/password`, { password: newPassword });
+            toast.success("Company password updated successfully!");
+            closeModal();
+        } catch (err) {
+            toast.error("Failed to update password: " + (err.response?.data?.message || err.message));
         }
     };
 
@@ -299,6 +319,13 @@ export default function Companies() {
                                                 <HardDrive size={16} />
                                             </button>
                                             <button
+                                                onClick={() => openModal(c, 'password')}
+                                                className="text-slate-600 hover:text-blue-600 flex items-center gap-1"
+                                                title="Change Password"
+                                            >
+                                                <Lock size={16} />
+                                            </button>
+                                            <button
                                                 onClick={() => openModal(c, 'details')}
                                                 className="text-slate-600 hover:text-blue-600 flex items-center gap-1"
                                                 title="View Details"
@@ -340,6 +367,7 @@ export default function Companies() {
                                     {modalMode === 'details' && 'Company Details'}
                                     {modalMode === 'plan' && 'Manage Plan & Subscription'}
                                     {modalMode === 'features' && 'Manage Module Features'}
+                                    {modalMode === 'password' && 'Change Company Password'}
                                 </h3>
                                 <p className="text-xs text-slate-500 uppercase tracking-widest">{selectedCompany.name}</p>
                             </div>
@@ -483,6 +511,34 @@ export default function Companies() {
                                         >
                                             <Save size={16} /> Save Changes
                                         </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {modalMode === 'password' && (
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                                        <p className="text-sm text-slate-600 mb-4">
+                                            Enter a new password for the primary admin (OWNER) of this company. They will need to use this new password to log in.
+                                        </p>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                                        <input
+                                            type="text"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Min. 6 characters"
+                                            className="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                                            autoComplete="off"
+                                        />
+
+                                        <div className="flex justify-end pt-4 border-t border-slate-100">
+                                            <button
+                                                onClick={handleSavePassword}
+                                                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                            >
+                                                <Save size={16} /> Update Password
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}

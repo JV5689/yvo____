@@ -65,6 +65,21 @@ export const AuthProvider = ({ children }) => {
         return userData;
     };
 
+    const loginSuperAdmin = async (username, password) => {
+        const res = await api.post('/admin/login', { username, password });
+        console.log("Super Admin Login Response Data:", res.data);
+        const { token, ...userData } = res.data;
+
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        // Ensure regular companyId isn't lingering
+        localStorage.removeItem('companyId');
+
+        setUser(userData);
+        return userData;
+    };
+
     const loginEmployee = async (phone, password) => {
         console.log("AuthContext: loginEmployee called", phone);
         const res = await api.post('/employee/auth/login', { phone, password });
@@ -95,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, loginEmployee, logout, registerCompany }}>
+        <AuthContext.Provider value={{ user, loading, login, loginSuperAdmin, loginEmployee, logout, registerCompany }}>
             {!loading && children}
         </AuthContext.Provider>
     );

@@ -91,3 +91,22 @@ export const deleteExpense = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Restore (Undo soft delete) expense
+export const restoreExpense = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const expense = await prisma.expense.update({
+            where: { id: String(id) },
+            data: { isDeleted: false }
+        });
+
+        if (!expense) {
+            return res.status(404).json({ message: 'Expense not found' });
+        }
+
+        res.status(200).json({ message: 'Expense restored successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

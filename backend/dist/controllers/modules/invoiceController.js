@@ -223,3 +223,20 @@ export const deleteInvoice = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+// Restore (Undo soft delete) invoice
+export const restoreInvoice = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const invoice = await prisma.invoice.update({
+            where: { id: String(id) },
+            data: { isDeleted: false, lastModifiedAt: new Date() }
+        });
+        if (!invoice) {
+            return res.status(404).json({ message: 'Invoice not found' });
+        }
+        res.status(200).json({ message: 'Invoice restored successfully' });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

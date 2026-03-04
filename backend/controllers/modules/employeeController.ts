@@ -16,7 +16,7 @@ export const getSalaryRecords = async (req: Request, res: Response) => {
 
         const records = await prisma.salaryRecord.findMany({
             where: query,
-            include: { employee: { select: { firstName: true, lastName: true, position: true } } },
+            include: { employee: { select: { firstName: true, lastName: true } } },
             orderBy: { paymentDate: 'desc' }
         });
 
@@ -219,8 +219,6 @@ export const createEmployee = async (req: Request, res: Response) => {
                 email,
                 phone,
                 password: hashedPassword,
-                position,
-                department,
                 salary: Number(salary),
                 status,
                 dateHired: dateHired ? new Date(dateHired) : new Date(),
@@ -254,19 +252,7 @@ export const updateEmployee = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Employee not found' });
         }
 
-        // Check if salary is being updated and is different
-        let newSalaryHistory: any = undefined;
-        if (updates.salary && Number(updates.salary) !== currentEmployee.salary) {
-            newSalaryHistory = {
-                amount: currentEmployee.salary,
-                changeDate: new Date()
-            };
-        }
-
         const updateData: any = { ...updates };
-        if (newSalaryHistory) {
-            updateData.salaryHistory = { create: newSalaryHistory };
-        }
 
         const employee = await prisma.employee.update({
             where: { id: String(id) },
@@ -508,7 +494,7 @@ export const getLeaveRequests = async (req: Request, res: Response) => {
 
         const leaves = await prisma.leaveRequest.findMany({
             where: query,
-            include: { employee: { select: { firstName: true, lastName: true, position: true } } },
+            include: { employee: { select: { firstName: true, lastName: true } } },
             orderBy: { createdAt: 'desc' }
         });
 

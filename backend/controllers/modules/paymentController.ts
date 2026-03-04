@@ -80,3 +80,22 @@ export const deletePayment = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Restore (Undo soft delete) payment
+export const restorePayment = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const payment = await prisma.payment.update({
+            where: { id: String(id) },
+            data: { isDeleted: false }
+        });
+
+        if (!payment) {
+            return res.status(404).json({ message: 'Payment not found' });
+        }
+
+        res.status(200).json({ message: 'Payment restored successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -74,8 +74,6 @@ export const loginEmployee = async (req: Request, res: Response) => {
                 lastName: employee.lastName,
                 email: employee.email,
                 phone: employee.phone,
-                position: employee.position,
-                department: employee.department,
                 company: company, // Use the company object fetched at line 38
                 avatar: employee.avatar,
                 role: 'employee'

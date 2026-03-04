@@ -179,3 +179,23 @@ export const deleteCustomer = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Restore (Undo soft delete) customer
+export const restoreCustomer = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const customer = await prisma.customer.update({
+            where: { id: String(id) },
+            data: { isDeleted: false, lastModifiedAt: new Date() }
+        });
+
+        if (!customer) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+
+        res.status(200).json({ message: 'Customer restored successfully' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

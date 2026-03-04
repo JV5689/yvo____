@@ -236,6 +236,57 @@ export const updateCompanyPlan = async (req: Request, res: Response) => {
     }
 };
 
+// PATCH /sa/companies/:id/password
+export const updateCompanyPassword = async (req: Request, res: Response) => {
+    try {
+        const { password } = req.body;
+        console.log(`[SuperAdmin] Updating password for owner of company:`, req.params.id);
+
+        if (!password) {
+            return res.status(400).json({ message: 'New password is required.' });
+        }
+
+        const companyId = req.params.id;
+        if (!companyId) {
+            return res.status(400).json({ message: 'Company ID is required.' });
+        }
+
+        // 1. Verify Company Exists
+        const company = await prisma.company.findUnique({
+            where: { id: Array.isArray(companyId) ? companyId[0] : companyId },
+            include: { memberships: { include: { user: true } } }
+        });
+
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        // 2. Find Owner User
+        const ownerMembership = company.memberships?.find((m: any) => m.role === 'OWNER');
+
+        if (!ownerMembership || !ownerMembership.user) {
+            return res.status(404).json({ message: 'No OWNER user found for this company to change the password.' });
+        }
+
+        const user = ownerMembership.user;
+
+        // 3. Hash New Password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        // 4. Update Database
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash }
+        });
+
+        res.json({ message: 'Company owner password updated successfully.' });
+    } catch (error: any) {
+        console.error("[SuperAdmin] Update Password Error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // PATCH /sa/companies/:id/flags
 export const updateCompanyFlags = async (req: Request, res: Response) => {
     try {
