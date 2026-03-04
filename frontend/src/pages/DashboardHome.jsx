@@ -44,15 +44,17 @@ export default function DashboardHome() {
             const companyId = localStorage.getItem('companyId');
 
             // Parallel Fetch
-            const [empRes, invRes, expRes] = await Promise.all([
+            const [empRes, invRes, expRes, salaryRes] = await Promise.all([
                 api.get('/employees', { params: { companyId } }),
                 api.get('/invoices', { params: { companyId } }),
-                api.get('/expenses', { params: { companyId } })
+                api.get('/expenses', { params: { companyId } }),
+                api.get('/employees/salary-records', { params: { companyId } })
             ]);
 
             const employees = empRes.data;
             const invoices = invRes.data;
             const expenses = expRes.data;
+            const salaryRecords = salaryRes.data;
 
             // --- KPI CALCULATIONS ---
             const totalEmployees = employees.length;
@@ -61,8 +63,10 @@ export default function DashboardHome() {
             const paidInvoices = invoices.filter(i => i.status === 'PAID');
             const totalRevenue = paidInvoices.reduce((sum, i) => sum + (i.grandTotal || 0), 0);
 
-            // Expenses
-            const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+            // Expenses (exclude mirrored Payroll category if redundant)
+            const sumGeneralExpenses = expenses.filter(e => e.category !== 'Payroll').reduce((sum, e) => sum + (e.amount || 0), 0);
+            const sumPayroll = salaryRecords.reduce((sum, s) => sum + (s.amount || 0), 0);
+            const totalExpenses = sumGeneralExpenses + sumPayroll;
 
             // Profit
             const netProfit = totalRevenue - totalExpenses;
@@ -97,10 +101,16 @@ export default function DashboardHome() {
                 if (months[key]) months[key].revenue += (inv.grandTotal || 0);
             });
 
-            expenses.forEach(exp => {
+            expenses.filter(e => e.category !== 'Payroll').forEach(exp => {
                 const d = new Date(exp.date || exp.createdAt);
                 const key = d.toLocaleString('default', { month: 'short' });
                 if (months[key]) months[key].expenses += (exp.amount || 0);
+            });
+
+            salaryRecords.forEach(s => {
+                const d = new Date(s.paymentDate || s.createdAt);
+                const key = d.toLocaleString('default', { month: 'short' });
+                if (months[key]) months[key].expenses += (s.amount || 0);
             });
 
             const revenueData = Object.values(months);

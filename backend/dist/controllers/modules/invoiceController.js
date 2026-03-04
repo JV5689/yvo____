@@ -12,7 +12,6 @@ export const getInvoices = async (req, res) => {
         };
         const invoices = await prisma.invoice.findMany({
             where: filter,
-            include: { items: true },
             orderBy: { date: 'desc' }
         });
         res.status(200).json(invoices);

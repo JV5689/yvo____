@@ -7,8 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model auditlog {
-  id          String   @id
+model AuditLog {
+  id          String   @id @default(uuid())
   companyId   String?
   actorId     String
   action      String
@@ -18,10 +18,12 @@ model auditlog {
   ipAddress   String?
   userAgent   String?
   timestamp   DateTime @default(now())
+
+  @@map("auditlog")
 }
 
-model backupjob {
-  id            String   @id
+model BackupJob {
+  id            String   @id @default(uuid())
   companyId     String
   createdBy     Json
   backupId      String   @unique(map: "BackupJob_backupId_key")
@@ -35,28 +37,34 @@ model backupjob {
   expiresAt     DateTime
   error         String?  @db.Text
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  @@map("backupjob")
 }
 
-model broadcastgroup {
-  id          String   @id
+model BroadcastGroup {
+  id          String   @id @default(uuid())
   companyId   String
   name        String
   description String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@map("broadcastgroup")
 }
 
-model broadcastgroupmember {
-  id         String @id @db.VarChar(125)
+model BroadcastGroupMember {
+  id         String @id @default(uuid()) @db.VarChar(125)
   groupId    String @db.VarChar(125)
   employeeId String @db.VarChar(125)
 
   @@unique([groupId, employeeId], map: "BroadcastGroupMember_groupId_employeeId_key")
+  @@index([employeeId], map: "broadcastgroupmember_employeeId_fkey")
+  @@map("broadcastgroupmember")
 }
 
-model broadcastmessage {
-  id          String   @id @db.VarChar(125)
+model BroadcastMessage {
+  id          String   @id @default(uuid()) @db.VarChar(125)
   companyId   String   @db.VarChar(125)
   senderId    String   @db.VarChar(125)
   groupId     String?  @db.VarChar(125)
@@ -64,11 +72,14 @@ model broadcastmessage {
   content     String   @db.Text
   attachments Json?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@index([senderId], map: "broadcastmessage_senderId_fkey")
+  @@map("broadcastmessage")
 }
 
-model calendarevent {
-  id               String   @id @db.VarChar(125)
+model CalendarEvent {
+  id               String   @id @default(uuid()) @db.VarChar(125)
   companyId        String   @db.VarChar(125)
   title            String   @db.VarChar(125)
   description      String?  @db.Text
@@ -81,18 +92,23 @@ model calendarevent {
   status           String   @default("Confirmed") @db.VarChar(125)
   isDeleted        Boolean  @default(false)
   createdAt        DateTime @default(now())
-  updatedAt        DateTime
+  updatedAt        DateTime @updatedAt
+
+  @@map("calendarevent")
 }
 
-model clientlogo {
-  id        String   @id @db.VarChar(125)
+model ClientLogo {
+  id        String   @id @default(uuid()) @db.VarChar(125)
   name      String   @db.VarChar(125)
   logoUrl   String   @db.LongText
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("clientlogo")
 }
 
-model company {
-  id                  String    @id @db.VarChar(125)
+model Company {
+  id                  String    @id @default(uuid()) @db.VarChar(125)
   name                String    @db.VarChar(125)
   businessType        String?   @db.VarChar(125)
   logo                String?   @db.LongText
@@ -112,11 +128,14 @@ model company {
   apiKey              String?   @unique(map: "Company_apiKey_key") @db.VarChar(125)
   invoiceAttributes   Json?
   createdAt           DateTime  @default(now())
-  updatedAt           DateTime
+  updatedAt           DateTime  @updatedAt
+
+  @@index([planId], map: "company_planId_fkey")
+  @@map("company")
 }
 
-model customer {
-  id             String   @id @db.VarChar(125)
+model Customer {
+  id             String   @id @default(uuid()) @db.VarChar(125)
   companyId      String   @db.VarChar(125)
   name           String   @db.VarChar(125)
   email          String?  @db.VarChar(125)
@@ -127,19 +146,23 @@ model customer {
   isDeleted      Boolean  @default(false)
 
   @@unique([companyId, phone], map: "Customer_companyId_phone_key")
+  @@map("customer")
 }
 
-model device {
-  id         String   @id @db.VarChar(125)
+model Device {
+  id         String   @id @default(uuid()) @db.VarChar(125)
   companyId  String   @db.VarChar(125)
   deviceId   String   @db.VarChar(125)
   deviceName String   @db.VarChar(125)
   lastSyncAt DateTime
   isRevoked  Boolean  @default(false)
+
+  @@index([companyId], map: "device_companyId_fkey")
+  @@map("device")
 }
 
-model employee {
-  id                 String   @id @db.VarChar(125)
+model Employee {
+  id                 String   @id @default(uuid()) @db.VarChar(125)
   companyId          String   @db.VarChar(125)
   firstName          String   @db.VarChar(125)
   lastName           String   @db.VarChar(125)
@@ -148,8 +171,6 @@ model employee {
   password           String   @db.VarChar(125)
   category           String   @default("General") @db.VarChar(125)
   avatar             String?  @db.LongText
-  position           String   @db.VarChar(125)
-  department         String?  @db.VarChar(125)
   salary             Float    @default(0)
   freeLeavesPerMonth Float    @default(1)
   workingDaysPerWeek Float    @default(6)
@@ -157,11 +178,25 @@ model employee {
   dateHired          DateTime @default(now())
   isDeleted          Boolean  @default(false)
   createdAt          DateTime @default(now())
-  updatedAt          DateTime
+  updatedAt          DateTime @updatedAt
+
+  @@index([companyId], map: "employee_companyId_fkey")
+  @@map("employee")
 }
 
-model expense {
-  id            String   @id @db.VarChar(125)
+model EmployeeCategory {
+  id        String   @id @default(uuid()) @db.VarChar(125)
+  companyId String   @db.VarChar(125)
+  name      String   @db.VarChar(125)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, name], map: "EmployeeCategory_companyId_name_key")
+  @@map("employeecategory")
+}
+
+model Expense {
+  id            String   @id @default(uuid()) @db.VarChar(125)
   companyId     String   @db.VarChar(125)
   category      String   @db.VarChar(125)
   amount        Float
@@ -171,22 +206,26 @@ model expense {
   receiptUrl    String?  @db.LongText
   isDeleted     Boolean  @default(false)
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  @@map("expense")
 }
 
-model featureflag {
-  id          String   @id @db.VarChar(125)
+model FeatureFlag {
+  id          String   @id @default(uuid()) @db.VarChar(125)
   key         String   @unique(map: "FeatureFlag_key_key") @db.VarChar(125)
   value       Json
   description String?  @db.VarChar(125)
   scope       String   @default("global") @db.VarChar(125)
   isEnabled   Boolean  @default(true)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@map("featureflag")
 }
 
-model inventoryitem {
-  id             String   @id @db.VarChar(125)
+model InventoryItem {
+  id             String   @id @default(uuid()) @db.VarChar(125)
   companyId      String   @db.VarChar(125)
   sku            String   @db.VarChar(125)
   name           String   @db.VarChar(125)
@@ -201,10 +240,11 @@ model inventoryitem {
   image          String?  @db.LongText
 
   @@unique([companyId, sku], map: "InventoryItem_companyId_sku_key")
+  @@map("inventoryitem")
 }
 
-model invoice {
-  id               String   @id @db.VarChar(125)
+model Invoice {
+  id               String   @id @default(uuid()) @db.VarChar(125)
   companyId        String   @db.VarChar(125)
   invoiceNumber    String   @db.VarChar(125)
   customerId       String   @db.VarChar(125)
@@ -224,10 +264,12 @@ model invoice {
   customAttributes Json?
 
   @@unique([companyId, invoiceNumber], map: "Invoice_companyId_invoiceNumber_key")
+  @@index([customerId], map: "invoice_customerId_fkey")
+  @@map("invoice")
 }
 
-model invoiceitem {
-  id           String  @id @db.VarChar(125)
+model InvoiceItem {
+  id           String  @id @default(uuid()) @db.VarChar(125)
   invoiceId    String  @db.VarChar(125)
   inventoryId  String? @db.VarChar(125)
   description  String? @db.VarChar(125)
@@ -235,10 +277,14 @@ model invoiceitem {
   price        Float?
   total        Float?
   customFields Json?
+
+  @@index([inventoryId], map: "invoiceitem_inventoryId_fkey")
+  @@index([invoiceId], map: "invoiceitem_invoiceId_fkey")
+  @@map("invoiceitem")
 }
 
-model invoicetemplate {
-  id              String   @id @db.VarChar(125)
+model InvoiceTemplate {
+  id              String   @id @default(uuid()) @db.VarChar(125)
   companyId       String?  @db.VarChar(125)
   name            String   @db.VarChar(125)
   type            String   @default("COMPANY") @db.VarChar(125)
@@ -248,11 +294,14 @@ model invoicetemplate {
   notes           String?  @db.Text
   isDeleted       Boolean  @default(false)
   createdAt       DateTime @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime @updatedAt
+
+  @@index([companyId], map: "invoicetemplate_companyId_fkey")
+  @@map("invoicetemplate")
 }
 
-model invoicetemplateitem {
-  id           String  @id @db.VarChar(125)
+model InvoiceTemplateItem {
+  id           String  @id @default(uuid()) @db.VarChar(125)
   templateId   String  @db.VarChar(125)
   inventoryId  String? @db.VarChar(125)
   description  String? @db.VarChar(125)
@@ -260,10 +309,13 @@ model invoicetemplateitem {
   price        Float   @default(0)
   total        Float   @default(0)
   customFields Json?
+
+  @@index([templateId], map: "invoicetemplateitem_templateId_fkey")
+  @@map("invoicetemplateitem")
 }
 
-model leaverequest {
-  id          String   @id @db.VarChar(125)
+model LeaveRequest {
+  id          String   @id @default(uuid()) @db.VarChar(125)
   companyId   String   @db.VarChar(125)
   employeeId  String   @db.VarChar(125)
   type        String   @db.VarChar(125)
@@ -273,11 +325,14 @@ model leaverequest {
   status      String   @default("Pending") @db.VarChar(125)
   adminRemark String?  @db.Text
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@index([employeeId], map: "leaverequest_employeeId_fkey")
+  @@map("leaverequest")
 }
 
-model payment {
-  id         String   @id @db.VarChar(125)
+model Payment {
+  id         String   @id @default(uuid()) @db.VarChar(125)
   companyId  String   @db.VarChar(125)
   customerId String   @db.VarChar(125)
   amount     Float
@@ -285,19 +340,23 @@ model payment {
   method     String   @default("CASH") @db.VarChar(125)
   isDeleted  Boolean  @default(false)
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
+
+  @@index([customerId], map: "payment_customerId_fkey")
+  @@map("payment")
 }
 
-model paymentinvoiceallocation {
-  id        String @id @db.VarChar(125)
+model PaymentInvoiceAllocation {
+  id        String @id @default(uuid()) @db.VarChar(125)
   paymentId String @db.VarChar(125)
   invoiceId String @db.VarChar(125)
 
   @@unique([paymentId, invoiceId], map: "PaymentInvoiceAllocation_paymentId_invoiceId_key")
+  @@map("paymentinvoiceallocation")
 }
 
-model plan {
-  id            String   @id @db.VarChar(125)
+model Plan {
+  id            String   @id @default(uuid()) @db.VarChar(125)
   code          String   @unique(map: "Plan_code_key") @db.VarChar(125)
   name          String   @db.VarChar(125)
   priceMonthly  Float
@@ -305,18 +364,22 @@ model plan {
   defaultFlags  Json?
   defaultLimits Json?
   isArchived    Boolean  @default(false)
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  @@map("plan")
 }
 
-model salaryhistory {
-  id         String   @id @db.VarChar(125)
+model SalaryHistory {
+  id         String   @id @default(uuid()) @db.VarChar(125)
   employeeId String   @db.VarChar(125)
   amount     Float
   changeDate DateTime @default(now())
+
+  @@map("salaryhistory")
 }
 
-model salaryrecord {
-  id              String   @id @db.VarChar(125)
+model SalaryRecord {
+  id              String   @id @default(uuid()) @db.VarChar(125)
   companyId       String   @db.VarChar(125)
   employeeId      String   @db.VarChar(125)
   amount          Float
@@ -331,11 +394,14 @@ model salaryrecord {
   status          String   @default("Paid") @db.VarChar(125)
   slipUrl         String?  @db.LongText
   createdAt       DateTime @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime @updatedAt
+
+  @@index([employeeId], map: "salaryrecord_employeeId_fkey")
+  @@map("salaryrecord")
 }
 
-model user {
-  id           String    @id @db.VarChar(125)
+model User {
+  id           String    @id @default(uuid()) @db.VarChar(125)
   email        String    @unique(map: "User_email_key") @db.VarChar(125)
   passwordHash String?   @db.VarChar(125)
   googleId     String?   @db.VarChar(125)
@@ -345,21 +411,25 @@ model user {
   refreshToken String?   @db.Text
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime  @updatedAt
+
+  @@map("user")
 }
 
-model usermembership {
-  id        String   @id @db.VarChar(125)
+model UserMembership {
+  id        String   @id @default(uuid()) @db.VarChar(125)
   userId    String   @db.VarChar(125)
   companyId String   @db.VarChar(125)
   role      String   @default("EMPLOYEE") @db.VarChar(125)
   joinedAt  DateTime @default(now())
 
   @@unique([userId, companyId], map: "UserMembership_userId_companyId_key")
+  @@index([companyId], map: "usermembership_companyId_fkey")
+  @@map("usermembership")
 }
 
-model workreport {
-  id             String   @id @db.VarChar(125)
+model WorkReport {
+  id             String   @id @default(uuid()) @db.VarChar(125)
   employeeId     String   @db.VarChar(125)
   companyId      String   @db.VarChar(125)
   date           DateTime @default(now())
@@ -368,5 +438,7 @@ model workreport {
   nextDayPlan    String?  @db.Text
   status         String   @default("Submitted") @db.VarChar(125)
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
+
+  @@map("workreport")
 }

@@ -17,7 +17,7 @@ export default function Employees() {
 
     const [employeeForm, setEmployeeForm] = useState({
         firstName: '', lastName: '', email: '', phone: '', password: '',
-        position: '', department: '', salary: '', status: 'Active', category: 'General',
+        salary: '', status: 'Active', category: 'General',
         freeLeavesPerMonth: 1, workingDaysPerWeek: 6
     });
 
@@ -41,7 +41,7 @@ export default function Employees() {
     const resetForm = () => {
         setEmployeeForm({
             firstName: '', lastName: '', email: '', phone: '', password: '',
-            position: '', department: '', salary: '', status: 'Active', category: 'General',
+            salary: '', status: 'Active', category: 'General',
             freeLeavesPerMonth: 1, workingDaysPerWeek: 6
         });
         setIsEditing(false);
@@ -60,8 +60,6 @@ export default function Employees() {
             email: emp.email,
             phone: emp.phone,
             password: '',
-            position: emp.position,
-            department: emp.department || '',
             salary: emp.salary,
             status: emp.status,
             category: emp.category || 'General',
@@ -142,7 +140,7 @@ export default function Employees() {
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by name, email, or role..."
+                        placeholder="Search by name or email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -165,8 +163,7 @@ export default function Employees() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {employees.filter(emp =>
                     emp.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    emp.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    emp.position.toLowerCase().includes(searchTerm.toLowerCase())
+                    emp.lastName.toLowerCase().includes(searchTerm.toLowerCase())
                 ).map((employee) => (
                     <div key={employee._id || employee.id} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start">
@@ -176,7 +173,6 @@ export default function Employees() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-slate-900">{employee.firstName} {employee.lastName}</h3>
-                                    <p className="text-xs text-slate-500">{employee.position}</p>
                                 </div>
                             </div>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${employee.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
@@ -188,10 +184,6 @@ export default function Employees() {
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                 <Mail size={16} className="text-slate-400" />
                                 {employee.email}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Briefcase size={16} className="text-slate-400" />
-                                {employee.department || 'No Department'}
                             </div>
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                 <UserCheck size={16} className="text-slate-400" />
@@ -302,16 +294,6 @@ export default function Employees() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Position</label>
-                                    <input required className="w-full border border-slate-200 p-2 rounded-lg" value={employeeForm.position} onChange={e => setEmployeeForm({ ...employeeForm, position: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Department</label>
-                                    <input className="w-full border border-slate-200 p-2 rounded-lg" value={employeeForm.department} onChange={e => setEmployeeForm({ ...employeeForm, department: e.target.value })} />
-                                </div>
-                            </div>
 
                             <div>
                                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Annual Salary (₹)</label>

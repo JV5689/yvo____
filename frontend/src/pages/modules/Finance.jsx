@@ -25,10 +25,11 @@ export default function Finance() {
             setLoading(true);
             const companyId = localStorage.getItem('companyId');
 
-            const [dashboardRes, customersRes, expensesRes] = await Promise.all([
+            const [dashboardRes, customersRes, expensesRes, salaryRes] = await Promise.all([
                 api.get('/finance/dashboard', { params: { companyId } }),
                 api.get('/customers', { params: { companyId } }),
-                api.get('/expenses', { params: { companyId } })
+                api.get('/expenses', { params: { companyId } }),
+                api.get('/employees/salary-records', { params: { companyId } })
             ]);
 
             const newStats = dashboardRes.data;
@@ -42,7 +43,20 @@ export default function Finance() {
             const customersWithDues = (customersRes.data || []).filter(c => c.totalDue > 0).sort((a, b) => b.totalDue - a.totalDue);
             setDueCustomers(customersWithDues);
 
-            setExpenses(expensesRes.data || []);
+            // Merge expenses and salary records (exclude mirrored Payroll category from general to avoid duplicates)
+            const allExpenses = [
+                ...(expensesRes.data || []).filter(e => e.category !== 'Payroll').map(e => ({ ...e, type: 'General' })),
+                ...(salaryRes.data || []).map(s => ({
+                    id: s.id,
+                    category: 'Payroll',
+                    amount: s.amount,
+                    date: s.paymentDate,
+                    description: `Salary for ${s.employee?.firstName} ${s.employee?.lastName}`,
+                    type: 'Payroll'
+                }))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            setExpenses(allExpenses);
         } catch (err) {
             console.error("Failed to load finance dashboard", err);
         } finally {
@@ -196,9 +210,12 @@ export default function Finance() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {expenses.slice(0, 10).map((exp) => (
-                                        <tr key={exp._id || exp.id} className="hover:bg-slate-50">
+                                        <tr key={exp.id || exp._id} className="hover:bg-slate-50">
                                             <td className="px-4 py-3">
-                                                <div className="font-medium text-slate-900">{exp.category}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-medium text-slate-900">{exp.category}</div>
+                                                    {exp.type === 'Payroll' && <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase">Payroll</span>}
+                                                </div>
                                                 <div className="text-xs text-slate-400">{new Date(exp.date).toLocaleDateString()}</div>
                                             </td>
                                             <td className="px-4 py-3 text-right font-bold text-red-600">

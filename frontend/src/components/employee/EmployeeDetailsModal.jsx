@@ -97,12 +97,6 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900">{employee.firstName} {employee.lastName}</h2>
-                            <div className="flex items-center gap-2 text-slate-500 text-sm mt-1">
-                                <Briefcase size={14} />
-                                <span>{employee.position}</span>
-                                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                <span>{employee.department || 'No Department'}</span>
-                            </div>
                             <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold mt-2 \${employee.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                                 <span className={`w-1.5 h-1.5 rounded-full \${employee.status === 'Active' ? 'bg-green-500' : 'bg-slate-400'}`}></span>
                                 {employee.status}

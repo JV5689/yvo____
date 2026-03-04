@@ -2,12 +2,12 @@ import { prisma } from '../../src/config/db.js';
 // Get all customers for a company
 export const getCustomers = async (req, res) => {
     try {
-        const { companyId, isDeleted } = req.query; // Or from auth middleware if available like req.user.companyId
+        const { companyId } = req.query; // Or from auth middleware if available like req.user.companyId
         if (!companyId) {
             return res.status(400).json({ message: 'Company ID is required' });
         }
         const customers = await prisma.customer.findMany({
-            where: { companyId: String(companyId), isDeleted: isDeleted === 'true' },
+            where: { companyId: String(companyId), isDeleted: false },
             include: {
                 invoices: {
                     where: { isDeleted: false, status: { notIn: ['DRAFT', 'CANCELLED'] } }

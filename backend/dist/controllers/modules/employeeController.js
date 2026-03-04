@@ -186,7 +186,7 @@ export const getEmployeeById = async (req, res) => {
 export const createEmployee = async (req, res) => {
     try {
         console.log("Create Employee Request Body:", req.body);
-        const { companyId, firstName, lastName, email, phone, password, position, department, salary, status, dateHired, category, avatar, freeLeavesPerMonth, workingDaysPerWeek } = req.body;
+        const { companyId, firstName, lastName, email, phone, password, salary, status, dateHired, category, avatar, freeLeavesPerMonth, workingDaysPerWeek } = req.body;
         if (!companyId || !firstName || !lastName || !email || !phone || !password) {
             return res.status(400).json({ message: 'Company ID, Name, Email, Phone, and Password are required' });
         }
@@ -230,6 +230,8 @@ export const updateEmployee = async (req, res) => {
             return res.status(404).json({ message: 'Employee not found' });
         }
         const updateData = { ...updates };
+        delete updateData.position;
+        delete updateData.department;
         const employee = await prisma.employee.update({
             where: { id: String(id) },
             data: updateData
@@ -322,17 +324,17 @@ export const paySalary = async (req, res) => {
         const employee = await prisma.employee.findUnique({ where: { id: String(id) } });
         if (!employee)
             return res.status(404).json({ message: 'Employee not found' });
-        const { baseSalary, leavesTaken, freeLeaves, deductionAmount } = req.body;
+        const { baseSalary, leavesTaken, totalLeaves, freeLeaves, deductionAmount } = req.body;
         // 1. Create Salary Record
         const salaryRecord = await prisma.salaryRecord.create({
             data: {
                 companyId: String(companyId),
                 employeeId: String(id),
                 amount: Number(amount), // Final Paid Amount
-                baseSalary: baseSalary ? Number(baseSalary) : employee.salary,
+                baseSalary: baseSalary ? Number(baseSalary) : Math.round(employee.salary / 12),
                 bonus: req.body.bonus ? Number(req.body.bonus) : 0,
-                leavesTaken: leavesTaken ? Number(leavesTaken) : 0,
-                freeLeaves: freeLeaves ? Number(freeLeaves) : employee.freeLeavesPerMonth,
+                leavesTaken: (leavesTaken || totalLeaves) ? Number(leavesTaken || totalLeaves) : 0,
+                freeLeaves: freeLeaves !== undefined ? Number(freeLeaves) : employee.freeLeavesPerMonth,
                 deductionAmount: deductionAmount ? Number(deductionAmount) : 0,
                 paymentDate: new Date(paymentDate),
                 payPeriod: String(payPeriod),

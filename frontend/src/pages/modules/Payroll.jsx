@@ -65,11 +65,10 @@ export default function Payroll() {
 
     // Helper to get payment status for an employee in selected period
     const getPaymentStatus = (employeeId) => {
+        const period = new Date(selectedYear, selectedMonth - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
         return salaryRecords.find(record => {
-            const recordDate = new Date(record.paymentDate);
             return (record.employeeId?.id || record.employeeId) === employeeId &&
-                recordDate.getMonth() + 1 === selectedMonth &&
-                recordDate.getFullYear() === selectedYear;
+                record.payPeriod === period;
         });
     };
 
@@ -79,8 +78,7 @@ export default function Payroll() {
     const totalMonthlyLiability = employees.reduce((acc, emp) => acc + (emp.salary || 0) / 12, 0);
     const paidAmount = salaryRecords
         .filter(r => {
-            const d = new Date(r.paymentDate);
-            return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
+            return r.payPeriod === periodLabel;
         })
         .reduce((acc, r) => acc + r.amount, 0);
     const pendingAmount = Math.max(0, totalMonthlyLiability - paidAmount);
@@ -181,7 +179,6 @@ export default function Payroll() {
                 <div style="margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px;">
                     <strong>Employee Details:</strong><br>
                     Name: ${employee.firstName} ${employee.lastName}<br>
-                    Designation: ${employee.position}<br>
                     Employee ID: ${(employee.id || '').slice(-6).toUpperCase()}
                 </div>
 
@@ -268,7 +265,6 @@ export default function Payroll() {
                     <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
                         <tr>
                             <th className="px-6 py-4">Employee</th>
-                            <th className="px-6 py-4">Position</th>
                             <th className="px-6 py-4">Annual Salary</th>
                             <th className="px-6 py-4">Monthly (Approx)</th>
                             <th className="px-6 py-4 text-center">Status</th>
@@ -295,7 +291,6 @@ export default function Payroll() {
                                             {emp.firstName} {emp.lastName}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-slate-600">{emp.position}</td>
                                     <td className="px-6 py-4 text-slate-900 font-medium">₹{emp.salary?.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-emerald-600 font-medium">₹{(emp.salary / 12).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                                     <td className="px-6 py-4 text-center">
