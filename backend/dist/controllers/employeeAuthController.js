@@ -5,8 +5,9 @@ import { AppError } from '../src/middleware/errorHandler.js';
 export const loginEmployee = async (req, res) => {
     let { phone, password } = req.body;
     const numericPhone = phone.replace(/[^\d]/g, '');
-    const normalizedPhone = numericPhone.length > 10 ? numericPhone.slice(-10) : numericPhone;
-    const employees = await prisma.$queryRawUnsafe('SELECT * FROM employee WHERE phone = ? LIMIT 1', normalizedPhone);
+    const last10Digits = numericPhone.length >= 10 ? numericPhone.slice(-10) : numericPhone;
+    // Search for employee with phone matching last 10 digits
+    const employees = await prisma.$queryRawUnsafe('SELECT * FROM employee WHERE phone LIKE ? LIMIT 1', `%${last10Digits}`);
     const employee = employees[0];
     if (!employee || !employee.password || !(await verifyPassword(password, employee.password))) {
         throw new AppError('Invalid phone or password', 401);
