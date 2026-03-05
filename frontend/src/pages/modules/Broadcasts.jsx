@@ -18,6 +18,7 @@ export default function Broadcasts() {
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
 
     // Message Composition State
+    const [messageTitle, setMessageTitle] = useState('');
     const [messageContent, setMessageContent] = useState('');
     const [recipientId, setRecipientId] = useState('all'); // 'all' or groupId
 
@@ -36,7 +37,7 @@ export default function Broadcasts() {
             const { data } = await api.get(`/employees?companyId=${companyId}`);
             if (Array.isArray(data)) {
                 setAllEmployees(data.map(e => ({
-                    id: e._id,
+                    id: e.id || e._id,
                     name: `${e.firstName} ${e.lastName}`,
                     firstName: e.firstName,
                     lastName: e.lastName,
@@ -185,9 +186,11 @@ export default function Broadcasts() {
                 senderId,
                 groupId: recipientId === 'all' ? null : recipientId,
                 targetAll: recipientId === 'all',
+                title: messageTitle,
                 content: messageContent,
                 attachments: []
             });
+            setMessageTitle('');
             setMessageContent('');
             setRecipientId('all');
             toast.success('Broadcast sent successfully');
@@ -237,6 +240,16 @@ export default function Broadcasts() {
                                     <option key={g._id} value={g._id}>{g.name} ({g.members?.length || 0} members)</option>
                                 ))}
                             </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Message Title</label>
+                            <input
+                                type="text"
+                                value={messageTitle}
+                                onChange={(e) => setMessageTitle(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                placeholder="Short catchy title..."
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Message Content</label>

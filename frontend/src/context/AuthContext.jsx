@@ -24,7 +24,10 @@ export const AuthProvider = ({ children }) => {
                 const parsedUser = JSON.parse(storedUser);
                 setUser(parsedUser);
 
-                if (role === 'employee' || parsedUser.role === 'employee') {
+                // IMPORTANT: Only refresh if user is an employee. 
+                // Superadmins and Company Admins don't need this side-effect.
+                // Added !parsedUser.isSuperAdmin safety check.
+                if (role === 'employee' && !parsedUser.isSuperAdmin) {
                     try {
                         const res = await api.get('/employee/auth/me');
                         const updatedUser = { ...parsedUser, ...res.data };
@@ -32,6 +35,8 @@ export const AuthProvider = ({ children }) => {
                         setUser(updatedUser);
                     } catch (e) {
                         console.error("Profile refresh failed", e);
+                        // If it's a 401/403, we should probably logout or ignore. 
+                        // The interceptor will handle 401 and redirect to /login
                     }
                 }
             }
@@ -47,6 +52,7 @@ export const AuthProvider = ({ children }) => {
 
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('userRole', 'admin');
         if (currentCompanyId) {
             localStorage.setItem('companyId', currentCompanyId);
         }
@@ -74,6 +80,7 @@ export const AuthProvider = ({ children }) => {
 
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('userRole', 'superadmin');
 
         // Ensure regular companyId isn't lingering
         localStorage.removeItem('companyId');
@@ -106,6 +113,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('userRole');
         localStorage.removeItem('companyId');
         setUser(null);
     };

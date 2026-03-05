@@ -59,20 +59,6 @@ export default function Plans() {
 
     const activePlan = useMemo(() => plans.find(p => p._id === activePlanId), [plans, activePlanId]);
 
-    useEffect(() => {
-        fetchPlans();
-    }, [fetchPlans]);
-
-    useEffect(() => {
-        if (activePlan) {
-            setEditToggles(activePlan.defaultFlags || {});
-            setSettingsForm({
-                name: activePlan.name,
-                priceMonthly: activePlan.priceMonthly
-            });
-        }
-    }, [activePlan]);
-
     const fetchPlans = React.useCallback(async (selectNewId = null) => {
         setLoading(true);
         try {
@@ -92,6 +78,20 @@ export default function Plans() {
             setLoading(false);
         }
     }, []);
+
+    useEffect(() => {
+        fetchPlans();
+    }, [fetchPlans]);
+
+    useEffect(() => {
+        if (activePlan) {
+            setEditToggles(activePlan.defaultFlags || {});
+            setSettingsForm({
+                name: activePlan.name,
+                priceMonthly: activePlan.priceMonthly
+            });
+        }
+    }, [activePlan]);
 
     const handleUpdateFeatures = async () => {
         if (!activePlanId) return;

@@ -123,7 +123,12 @@ export const getEmployeeBroadcasts = async (req: Request, res: Response) => {
             take: 50
         });
 
-        res.json(messages);
+        res.json(messages.map(m => ({
+            ...m,
+            _id: m.id,
+            title: (m as any).title || 'Announcement',
+            message: m.content
+        })));
     } catch (error: any) {
         console.error(error);
         res.status(500).json({ message: 'Error fetching broadcasts' });

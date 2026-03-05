@@ -79,6 +79,7 @@ model BroadcastMessage {
   senderId    String   @db.VarChar(125)
   groupId     String?  @db.VarChar(125)
   targetAll   Boolean  @default(false)
+  title       String?  @db.VarChar(125)
   content     String   @db.Text
   attachments Json?
   createdAt   DateTime @default(now())

@@ -55,20 +55,26 @@ export const deleteSalaryRecord = async (req: Request, res: Response) => {
 
 export const createBroadcastGroup = async (req: Request, res: Response) => {
     try {
-        const { companyId, name, memberIds } = req.body;
-        // In prisma, map memberIds array to connect objects
+        const { companyId, name, members, memberIds } = req.body;
+        const finalIds = members || memberIds || [];
+        // In prisma, map finalIds array to connect objects
         const newGroup = await prisma.broadcastGroup.create({
             data: {
                 companyId: String(companyId),
                 name,
                 members: {
-                    create: (memberIds || []).map((empId: string) => ({
+                    create: finalIds.map((empId: string) => ({
                         employeeId: empId
                     }))
                 }
+            },
+            include: {
+                members: {
+                    include: { employee: { select: { firstName: true, lastName: true } } }
+                }
             }
         });
-        res.status(201).json(newGroup);
+        res.status(201).json(formatGroup(newGroup));
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -146,7 +152,7 @@ export const deleteBroadcastGroup = async (req: Request, res: Response) => {
 
 export const sendBroadcastMessage = async (req: Request, res: Response) => {
     try {
-        const { companyId, senderId, groupId, targetAll, content, attachments } = req.body;
+        const { companyId, senderId, groupId, targetAll, title, content, attachments } = req.body;
 
         const message = await prisma.broadcastMessage.create({
             data: {
@@ -154,6 +160,7 @@ export const sendBroadcastMessage = async (req: Request, res: Response) => {
                 senderId: String(senderId), // User ID of Admin
                 groupId: targetAll ? null : String(groupId),
                 targetAll,
+                title: title || 'Announcement',
                 content,
                 attachments: attachments || []
             }
