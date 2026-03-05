@@ -1,17 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../../services/api';
 import {
-    Plus, Search, Edit2, X, DollarSign,
+    Plus, Search, Edit2, X, IndianRupee,
     Trash2, Layout, Settings, Layers, ChevronRight,
     Globe, BarChart, Save, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 const FEATURE_GROUPS = [
     {
         id: 'fin',
         title: "Financial Suite",
-        icon: <DollarSign size={18} />,
+        icon: <IndianRupee size={18} />,
         color: "green",
         flags: [
             { key: "module_finance", label: "Finance & Accounting", desc: "Core dashboard, expenses, and ledger" },
@@ -60,7 +61,7 @@ export default function Plans() {
 
     useEffect(() => {
         fetchPlans();
-    }, []);
+    }, [fetchPlans]);
 
     useEffect(() => {
         if (activePlan) {
@@ -72,7 +73,7 @@ export default function Plans() {
         }
     }, [activePlan]);
 
-    const fetchPlans = async (selectNewId = null) => {
+    const fetchPlans = React.useCallback(async (selectNewId = null) => {
         setLoading(true);
         try {
             const res = await api.get('/sa/plans');
@@ -80,17 +81,17 @@ export default function Plans() {
             const fetchedPlans = (res.data || []).filter(p => !p.isArchived);
             setPlans(fetchedPlans);
 
-            if (selectNewId) {
-                setActivePlanId(selectNewId);
-            } else if (!activePlanId && fetchedPlans.length > 0) {
-                setActivePlanId(fetchedPlans[0]._id);
-            }
-        } catch (err) {
+            setActivePlanId(currentId => {
+                if (selectNewId) return selectNewId;
+                if (!currentId && fetchedPlans.length > 0) return fetchedPlans[0]._id;
+                return currentId;
+            });
+        } catch {
             toast.error("Failed to fetch plans");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const handleUpdateFeatures = async () => {
         if (!activePlanId) return;
@@ -100,7 +101,6 @@ export default function Plans() {
             // Update local state to reflect saved changes
             fetchPlans(activePlanId);
         } catch (err) {
-            console.error("Save features error:", err);
             toast.error("Failed to save: " + (err.response?.data?.message || err.message));
         }
     };
@@ -112,7 +112,7 @@ export default function Plans() {
             toast.success("Plan details updated!");
             fetchPlans(activePlanId);
         } catch (err) {
-            toast.error("Update failed: " + err.message);
+            toast.error("Update failed: " + (err.response?.data?.message || err.message));
         }
     };
 
@@ -133,7 +133,17 @@ export default function Plans() {
     };
 
     const handleArchivePlan = async (id) => {
-        if (!window.confirm("Are you sure you want to archive this plan? It will be hidden from new selections.")) return;
+        const result = await Swal.fire({
+            title: 'Archive Plan?',
+            text: 'This plan will be hidden from new selections.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Archive',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            reverseButtons: true,
+        });
+        if (!result.isConfirmed) return;
         try {
             await api.patch(`/sa/plans/${id}/archive`);
             toast.success("Plan archived");
@@ -200,7 +210,7 @@ export default function Plans() {
                                 >
                                     <div className="flex justify-between items-start">
                                         <div className="font-bold text-slate-900">{p.name}</div>
-                                        <div className="text-indigo-600 font-bold text-sm">${p.priceMonthly}/mo</div>
+                                        <div className="text-indigo-600 font-bold text-sm">₹{p.priceMonthly}/mo</div>
                                     </div>
                                     <div className="text-[10px] font-mono text-slate-400 mt-1 uppercase tracking-wider">{p.code}</div>
                                     {activePlanId === p._id && (
@@ -311,9 +321,9 @@ export default function Plans() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Price Monthly ($)</label>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Price Monthly (₹)</label>
                                                     <div className="relative">
-                                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</div>
+                                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</div>
                                                         <input
                                                             type="number"
                                                             value={settingsForm.priceMonthly}
@@ -378,15 +388,15 @@ export default function Plans() {
                                         placeholder="ENT_TIER"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Price / Mo</label>
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</div>
                                     <input
                                         type="number"
                                         required
                                         min="0"
                                         value={createForm.priceMonthly}
                                         onChange={e => setCreateForm({ ...createForm, priceMonthly: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20"
+                                        className="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20"
                                     />
                                 </div>
                             </div>

@@ -1,41 +1,43 @@
-import { Company } from '../../models/Global/Company.js';
-import { User } from '../../models/Global/User.js';
-import { Plan } from '../../models/Global/Plan.js';
+import { prisma } from '../../src/config/db.js';
 import bcrypt from 'bcryptjs';
 // GET /sa/dashboard-stats
 export const getDashboardStats = async (req, res) => {
     try {
-        const totalCompanies = await Company.countDocuments({});
-        const activeCompanies = await Company.countDocuments({ subscriptionStatus: 'active' });
+        const totalCompanies = await prisma.company.count();
+        const activeCompanies = await prisma.company.count({ where: { subscriptionStatus: 'active' } });
         // Count users who are not super admins (Employees/Admins of companies)
-        const totalUsers = await User.countDocuments({ isSuperAdmin: false });
+        const totalUsers = await prisma.user.count({ where: { isSuperAdmin: false } });
         // Plan Distribution
-        const companiesByPlan = await Company.aggregate([
-            {
-                $lookup: {
-                    from: 'plans',
-                    localField: 'planId',
-                    foreignField: '_id',
-                    as: 'plan'
-                }
-            },
-            { $unwind: '$plan' },
-            {
-                $group: {
-                    _id: '$plan.name',
-                    count: { $sum: 1 }
-                }
+        const companiesByPlan = await prisma.company.groupBy({
+            by: ['planId'],
+            _count: {
+                _all: true
             }
-        ]);
-        const recentCompanies = await Company.find()
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .populate('planId', 'name');
+        });
+        // Get plan names for distribution
+        const planIds = companiesByPlan.map(p => p.planId);
+        const plans = await prisma.plan.findMany({
+            where: { id: { in: planIds } },
+            select: { id: true, name: true }
+        });
+        const planMap = plans.reduce((acc, p) => {
+            acc[p.id] = p.name;
+            return acc;
+        }, {});
+        const planDistribution = companiesByPlan.map(p => ({
+            name: planMap[p.planId] || 'Unknown',
+            value: p._count._all
+        }));
+        const recentCompanies = await prisma.company.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            include: { plan: { select: { name: true } } }
+        });
         res.json({
             totalCompanies,
             activeCompanies,
             totalUsers,
-            planDistribution: companiesByPlan.map(p => ({ name: p._id, value: p.count })),
+            planDistribution,
             recentCompanies
         });
     }
@@ -47,20 +49,22 @@ export const getDashboardStats = async (req, res) => {
 export const getCompanies = async (req, res) => {
     try {
         const { page = 1, limit = 10, search, status } = req.query;
-        const query = {};
+        const where = {};
         if (status)
-            query.subscriptionStatus = status;
+            where.subscriptionStatus = status;
         if (search) {
-            query.name = { $regex: search, $options: 'i' };
+            where.name = { contains: search };
         }
-        const companies = await Company.find(query)
-            .populate('planId', 'name code')
-            .skip((Number(page) - 1) * Number(limit))
-            .limit(Number(limit))
-            .sort({ createdAt: -1 });
-        const total = await Company.countDocuments(query);
+        const companies = await prisma.company.findMany({
+            where,
+            include: { plan: { select: { name: true, code: true } } },
+            skip: (Number(page) - 1) * Number(limit),
+            take: Number(limit),
+            orderBy: { createdAt: 'desc' }
+        });
+        const total = await prisma.company.count({ where });
         res.json({
-            companies,
+            companies: companies.map((c) => ({ ...c, _id: c.id, plan: c.plan ? { ...c.plan, _id: c.planId } : null })),
             total,
             pages: Math.ceil(total / Number(limit))
         });
@@ -72,16 +76,32 @@ export const getCompanies = async (req, res) => {
 // GET /sa/companies/:id
 export const getCompanyById = async (req, res) => {
     try {
-        const company = await Company.findById(req.params.id).populate('planId');
+        const company = await prisma.company.findUnique({
+            where: { id: String(req.params.id) },
+            include: { plan: true }
+        });
         if (!company)
             return res.status(404).json({ message: 'Company not found' });
         // Also fetch owners/admins for this company
-        const admins = await User.find({
-            'memberships': {
-                $elemMatch: { companyId: company._id, role: { $in: ['OWNER', 'ADMIN'] } }
+        const admins = await prisma.user.findMany({
+            where: {
+                memberships: {
+                    some: {
+                        companyId: company.id,
+                        role: { in: ['OWNER', 'ADMIN'] }
+                    }
+                }
+            },
+            select: {
+                id: true,
+                fullName: true,
+                email: true
             }
-        }).select('fullName email');
-        res.json({ company, admins });
+        });
+        res.json({
+            company: { ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null },
+            admins: admins.map((a) => ({ ...a, _id: a.id }))
+        });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -97,45 +117,53 @@ export const createCompany = async (req, res) => {
             return res.status(400).json({ message: 'Missing required fields' });
         }
         // 1. Get Plan
-        const plan = await Plan.findById(planId);
+        const plan = await prisma.plan.findUnique({ where: { id: planId } });
         if (!plan)
             return res.status(400).json({ message: 'Invalid Plan ID' });
         // 2. Check if User/Company Exists
-        const existingUser = await User.findOne({ email: ownerEmail });
+        const existingUser = await prisma.user.findUnique({ where: { email: ownerEmail } });
         if (existingUser) {
             return res.status(400).json({ message: 'User with this email already exists' });
         }
-        // 3. Create Company
-        const company = new Company({
-            name,
-            planId: plan._id,
-            subscriptionStatus: 'active',
-            // Apply plan defaults
-            featureFlags: plan.defaultFlags,
-            limitOverrides: {},
-            // Extended Details
-            phone,
-            address,
-            website,
-            businessType,
-            email: ownerEmail // Main contact email for company
-        });
-        await company.save();
-        // 4. Create Owner (User)
+        // 3. Create Company and Owner (User) in a transaction
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
-        const user = new User({
-            email: ownerEmail,
-            fullName: ownerName,
-            passwordHash,
-            memberships: [{
-                    companyId: company._id,
-                    role: 'OWNER'
-                }],
-            isSuperAdmin: false
+        const result = await prisma.$transaction(async (tx) => {
+            const company = await tx.company.create({
+                data: {
+                    name,
+                    planId: plan.id,
+                    subscriptionStatus: 'active',
+                    featureFlags: plan.defaultFlags || {},
+                    limitOverrides: {},
+                    phone,
+                    address,
+                    website,
+                    businessType,
+                    email: ownerEmail
+                }
+            });
+            const user = await tx.user.create({
+                data: {
+                    email: ownerEmail,
+                    fullName: ownerName,
+                    passwordHash,
+                    isSuperAdmin: false,
+                    memberships: {
+                        create: {
+                            companyId: company.id,
+                            role: 'OWNER'
+                        }
+                    }
+                }
+            });
+            return { company, user };
         });
-        await user.save();
-        res.status(201).json({ company, user });
+        res.status(201).json({
+            ...result,
+            company: { ...result.company, _id: result.company.id },
+            user: { ...result.user, _id: result.user.id }
+        });
     }
     catch (error) {
         console.error("Create Company Error:", error);
@@ -146,12 +174,16 @@ export const createCompany = async (req, res) => {
 export const updateCompanyStatus = async (req, res) => {
     try {
         const { status, subscriptionEndsAt } = req.body;
-        const updateData = { subscriptionStatus: status };
+        const data = { subscriptionStatus: status };
         if (subscriptionEndsAt) {
-            updateData.subscriptionEndsAt = subscriptionEndsAt;
+            data.subscriptionEndsAt = new Date(subscriptionEndsAt);
         }
-        const company = await Company.findByIdAndUpdate(req.params.id, updateData, { new: true }).populate('planId');
-        res.json(company);
+        const company = await prisma.company.update({
+            where: { id: String(req.params.id) },
+            data,
+            include: { plan: { select: { name: true, code: true } } }
+        });
+        res.json({ ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -162,49 +194,82 @@ export const updateCompanyPlan = async (req, res) => {
     try {
         const { planId } = req.body;
         // Validate Plan
-        const plan = await Plan.findById(planId);
+        const plan = await prisma.plan.findUnique({ where: { id: planId } });
         if (!plan)
             return res.status(404).json({ message: 'Plan not found' });
-        const company = await Company.findByIdAndUpdate(req.params.id, { planId: plan._id }, { new: true }).populate('planId');
-        res.json(company);
+        const company = await prisma.company.update({
+            where: { id: String(req.params.id) },
+            data: { planId: plan.id },
+            include: { plan: { select: { name: true, code: true } } }
+        });
+        res.json({ ...company, _id: company.id, plan: company.plan ? { ...company.plan, _id: company.planId } : null });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
-// PATCH /sa/companies/:id/flags
+// PATCH /sa/companies/:id/password
+export const updateCompanyPassword = async (req, res) => {
+    try {
+        const { password } = req.body;
+        console.log(`[SuperAdmin] Updating password for owner of company:`, req.params.id);
+        if (!password) {
+            return res.status(400).json({ message: 'New password is required.' });
+        }
+        const companyId = req.params.id;
+        if (!companyId) {
+            return res.status(400).json({ message: 'Company ID is required.' });
+        }
+        // 1. Verify Company Exists
+        const company = await prisma.company.findUnique({
+            where: { id: Array.isArray(companyId) ? companyId[0] : companyId },
+            include: { memberships: { include: { user: true } } }
+        });
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+        // 2. Find Owner User
+        const ownerMembership = company.memberships?.find((m) => m.role === 'OWNER');
+        if (!ownerMembership || !ownerMembership.user) {
+            return res.status(404).json({ message: 'No OWNER user found for this company to change the password.' });
+        }
+        const user = ownerMembership.user;
+        // 3. Hash New Password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+        // 4. Update Database
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash }
+        });
+        res.json({ message: 'Company owner password updated successfully.' });
+    }
+    catch (error) {
+        console.error("[SuperAdmin] Update Password Error:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
 // PATCH /sa/companies/:id/flags
 export const updateCompanyFlags = async (req, res) => {
     try {
-        const { flags } = req.body;
+        const { flags, replace } = req.body;
         console.log(`[SuperAdmin] Updating flags for company ${req.params.id}:`, flags);
-        const company = await Company.findById(req.params.id);
+        const company = await prisma.company.findUnique({ where: { id: String(req.params.id) } });
         if (!company)
             return res.status(404).json({ message: 'Company not found' });
-        if (!company.featureFlags) {
-            company.featureFlags = new Map();
-        }
-        // Mongoose Map Handling
-        if (req.body.replace) {
-            // Complete replacement (for Reset or clean save)
-            console.log(`[SuperAdmin] Replacing flags for company ${req.params.id}`);
-            company.featureFlags = new Map(Object.entries(flags || {}));
+        let newFlags;
+        if (replace) {
+            newFlags = flags || {};
         }
         else {
-            // MERGE (Legacy/Partial update)
-            if (company.featureFlags instanceof Map) {
-                for (const [key, value] of Object.entries(flags || {})) {
-                    company.featureFlags.set(key, value);
-                }
-            }
-            else {
-                company.featureFlags = { ...company.featureFlags, ...(flags || {}) };
-            }
+            const existingFlags = typeof company.featureFlags === 'object' && company.featureFlags !== null ? company.featureFlags : {};
+            newFlags = { ...existingFlags, ...(flags || {}) };
         }
-        // Crucial for Map/Mixed types changes to be detected
-        company.markModified('featureFlags');
-        await company.save();
-        res.json(company);
+        const updatedCompany = await prisma.company.update({
+            where: { id: String(req.params.id) },
+            data: { featureFlags: newFlags }
+        });
+        res.json({ ...updatedCompany, _id: updatedCompany.id });
     }
     catch (error) {
         console.error("[SuperAdmin] Update Flags Error:", error);
@@ -215,59 +280,36 @@ export const updateCompanyFlags = async (req, res) => {
 export const deleteCompany = async (req, res) => {
     try {
         const companyId = req.params.id;
-        const company = await Company.findById(companyId);
+        const company = await prisma.company.findUnique({ where: { id: String(companyId) } });
         if (!company)
             return res.status(404).json({ message: 'Company not found' });
         console.log(`[DeleteCompany] Starting full cleanup for company: ${company.name} (${companyId})`);
-        // 1. Remove Company Memberships from Users
-        const members = await User.find({ 'memberships.companyId': company._id });
-        for (const member of members) {
-            member.memberships = member.memberships.filter(m => m.companyId.toString() !== company._id.toString());
-            if (member.memberships.length === 0 && !member.isSuperAdmin) {
-                await User.findByIdAndDelete(member._id);
+        // With Prisma's onDelete: Cascade, many things will be deleted automatically if defined in schema.prisma.
+        // Let's check schema.prisma just to be sure.
+        // Final Delete the Company (Cascades will trigger)
+        await prisma.company.delete({ where: { id: String(companyId) } });
+        // Special cleanup for users who ONLY belong to this company and are not super admins
+        // This logic is a bit more complex with Prisma as it's not a direct cascade.
+        // But the previous implementation did it, so let's replicate if needed or simplify.
+        // In the previous implementation, it filtered memberships and deleted the user if empty.
+        // Let's find users who belonged to this company
+        // Actually, schema says memberships are Cascade on companyId. So memberships are gone.
+        // We need to find users with 0 memberships now.
+        const usersToDelete = await prisma.user.findMany({
+            where: {
+                isSuperAdmin: false,
+                memberships: { none: {} }
             }
-            else {
-                await member.save();
-            }
-        }
-        // 2. Delete Module Data (Parallel for speed)
-        const modelsToDelete = [
-            // Modules
-            import('../../models/Modules/Invoice.js').then(m => m.Invoice),
-            import('../../models/Modules/Customer.js').then(m => m.Customer),
-            import('../../models/Modules/InventoryItem.js').then(m => m.InventoryItem),
-            import('../../models/Modules/Employee.js').then(m => m.Employee),
-            import('../../models/Modules/LeaveRequest.js').then(m => m.LeaveRequest),
-            import('../../models/Modules/SalaryRecord.js').then(m => m.SalaryRecord),
-            import('../../models/Modules/Expense.js').then(m => m.Expense),
-            import('../../models/Modules/CalendarEvent.js').then(m => m.CalendarEvent),
-            import('../../models/Modules/BroadcastMessage.js').then(m => m.BroadcastMessage),
-            import('../../models/Modules/BroadcastGroup.js').then(m => m.BroadcastGroup),
-            // Global (scoping)
-            import('../../models/Global/AuditLog.js').then(m => m.AuditLog),
-            import('../../models/Global/FeatureFlag.js').then(m => m.FeatureFlag),
-            // Legacy/Other paths (handled dynamically if possible, or skip if not sure)
-            // attempting to load Subscription/Payment if they exist in src/models for completeness?
-            // No, better to stick to known paths or check existence in DB directly?
-            // Since we import models, let's just use what we know exists in backend/models
-        ];
-        // Wait for imports
-        const loadedModels = await Promise.all(modelsToDelete);
-        // Execute Deletions
-        const deletePromises = loadedModels.map(Model => {
-            if (!Model)
-                return Promise.resolve();
-            // FeatureFlag uses scopeId for company
-            if (Model.modelName === 'FeatureFlag') {
-                return Model.deleteMany({ scope: 'COMPANY', scopeId: companyId });
-            }
-            return Model.deleteMany({ companyId: companyId });
         });
-        await Promise.all(deletePromises);
-        // 3. Delete the Company
-        await Company.findByIdAndDelete(companyId);
-        console.log(`[DeleteCompany] Successfully deleted company and all associated data.`);
-        res.json({ message: 'Company and all associated data deleted successfully' });
+        if (usersToDelete.length > 0) {
+            await prisma.user.deleteMany({
+                where: {
+                    id: { in: usersToDelete.map(u => u.id) }
+                }
+            });
+        }
+        console.log(`[DeleteCompany] Successfully deleted company and associated users.`);
+        res.json({ message: 'Company and associated data deleted successfully' });
     }
     catch (error) {
         console.error("Delete Company Error:", error);

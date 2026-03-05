@@ -1,99 +1,76 @@
 import { Request, Response } from 'express';
-import { signToken } from '../src/utils/jwt.js';
-import bcrypt from 'bcryptjs';
-import { Employee } from '../models/Modules/Employee.js';
-import { Company } from '../models/Global/Company.js';
-import { Plan } from '../models/Global/Plan.js';
+import { prisma } from '../src/config/db.js';
+import { verifyPassword } from '../src/security/hashing.js';
+import { generateAccessToken } from '../src/security/tokens.js';
+import { AppError } from '../src/middleware/errorHandler.js';
 
 export const loginEmployee = async (req: Request, res: Response) => {
-    try {
-        let { phone, password } = req.body;
+    let { phone, password } = req.body;
 
-        // Normalize phone: remove all non-digit characters and take last 10 digits
-        const numericPhone = phone.replace(/[^\d]/g, '');
-        const normalizedPhone = numericPhone.length > 10 ? numericPhone.slice(-10) : numericPhone;
+    const numericPhone = phone.replace(/[^\d]/g, '');
+    const normalizedPhone = numericPhone.length > 10 ? numericPhone.slice(-10) : numericPhone;
 
-        // Find employee by phone
-        const employee = await Employee.findOne({ phone: normalizedPhone }).populate('companyId', 'name logo');
-        if (!employee) {
-            return res.status(401).json({ message: 'Invalid phone or password' });
-        }
+    const employees: any[] = await prisma.$queryRawUnsafe('SELECT * FROM employee WHERE phone = ? LIMIT 1', normalizedPhone);
+    const employee = employees[0];
 
-        // Check password
-        if (!employee.password) {
-            return res.status(400).json({ message: 'Account not fully set up. Please contact admin.' });
-        }
-
-        const isMatch = await bcrypt.compare(password, employee.password);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid phone or password' });
-        }
-
-        if (employee.status !== 'Active') {
-            return res.status(403).json({ message: 'Account is not active' });
-        }
-
-        // Check if Company has Employee Module Enabled
-        const company = await Company.findById(employee.companyId as any).populate('planId');
-        if (!company) {
-            return res.status(404).json({ message: 'Company not found' });
-        }
-
-        // Calculate functionality access
-        const plan = await Plan.findById((company.planId as any)._id || company.planId);
-        if (!plan) {
-            return res.status(404).json({ message: 'Plan not found' });
-        }
-
-        // Handle Mongoose Maps/Objects correctly
-        const planDefaults = plan.defaultFlags instanceof Map ? Object.fromEntries(plan.defaultFlags) : (plan.defaultFlags || {});
-        const companyOverrides = company.featureFlags instanceof Map ? Object.fromEntries(company.featureFlags) : (company.featureFlags || {});
-
-        // Merge logic: Plan Defaults -> Company Overrides
-        const effectiveFlags = { ...planDefaults, ...companyOverrides };
-
-        if (!effectiveFlags['module_employees']) {
-            return res.status(403).json({ message: 'Employee access is disabled for your company.' });
-        }
-
-        // Generate Token
-        const token = signToken(
-            { id: (employee._id as any).toString(), role: 'employee', companyId: (employee.companyId as any)._id?.toString() || employee.companyId?.toString() }
-        );
-
-        res.json({
-            token,
-            user: {
-                id: employee._id,
-                firstName: employee.firstName,
-                lastName: employee.lastName,
-                email: employee.email,
-                phone: employee.phone,
-                position: employee.position,
-                department: employee.department,
-                company: employee.companyId,
-                avatar: employee.avatar,
-                role: 'employee'
-            }
-        });
-
-    } catch (error: any) {
-        console.error('Employee Login Error:', error);
-        res.status(500).json({ message: 'Server error' });
+    if (!employee || !employee.password || !(await verifyPassword(password, employee.password))) {
+        throw new AppError('Invalid phone or password', 401);
     }
+
+    if (employee.status !== 'Active') throw new AppError('Account is not active', 403);
+
+    const companies: any[] = await prisma.$queryRawUnsafe('SELECT id, featureFlags, planId FROM company WHERE id = ?', employee.companyId);
+    const company = companies[0];
+    if (!company) throw new AppError('Company not found', 404);
+
+    const plans: any[] = await prisma.$queryRawUnsafe('SELECT defaultFlags FROM plan WHERE id = ?', company.planId);
+    const plan = plans[0];
+    if (!plan) throw new AppError('Plan not found', 404);
+
+    const planDefaults = (plan.defaultFlags as Record<string, boolean>) || {};
+    const companyOverrides = (company.featureFlags as Record<string, boolean>) || {};
+    const effectiveFlags = { ...planDefaults, ...companyOverrides };
+
+    if (!effectiveFlags['module_employees']) {
+        throw new AppError('Employee access is disabled for your company.', 403);
+    }
+
+    const payload = { userId: employee.id, role: 'employee', companyId: employee.companyId, isSuperAdmin: false };
+    const accessToken = generateAccessToken(payload);
+
+    res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000,
+    });
+
+    res.json({
+        status: 'success',
+        token: accessToken,
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        email: employee.email,
+        phone: employee.phone,
+        company: company,
+        avatar: employee.avatar,
+        role: 'employee'
+    });
 };
 
 export const getEmployeeProfile = async (req: Request, res: Response) => {
-    try {
-        const employeeId = req.user?.userId || (req.user as any)?.id; // From middleware
-        const employee = await Employee.findById(employeeId).populate('companyId', 'name logo');
+    const employeeId = (req as any).user?.userId;
+    const employees: any[] = await prisma.$queryRawUnsafe('SELECT * FROM employee WHERE id = ?', String(employeeId));
+    const employee = employees[0];
+    if (!employee) throw new AppError('Employee not found', 404);
 
-        if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
-        }
+    const companies: any[] = await prisma.$queryRawUnsafe('SELECT name, logo FROM company WHERE id = ?', employee.companyId);
+    const company = companies[0];
 
-        res.json(employee);
-    } catch (error: any) {
-        res.status(500).json({ message: 'Server error' });
-    }
+    res.json({
+        status: 'success',
+        ...employee,
+        company: company
+    });
 };

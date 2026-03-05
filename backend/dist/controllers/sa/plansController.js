@@ -1,9 +1,11 @@
-import { Plan } from '../../models/Global/Plan.js';
+import { prisma } from '../../src/config/db.js';
 // GET /sa/plans
 export const getPlans = async (req, res) => {
     try {
-        const plans = await Plan.find({ isArchived: false });
-        res.json(plans);
+        const plans = await prisma.plan.findMany({
+            where: { isArchived: false }
+        });
+        res.json(plans.map((p) => ({ ...p, _id: p.id })));
     }
     catch (error) {
         res.status(500).json({ message: error.message });
@@ -12,80 +14,74 @@ export const getPlans = async (req, res) => {
 // POST /sa/plans
 export const createPlan = async (req, res) => {
     try {
-        const plan = new Plan(req.body);
-        await plan.save();
-        res.status(201).json(plan);
+        const { defaultFlags, defaultLimits, priceMonthly, ...rest } = req.body;
+        const plan = await prisma.plan.create({
+            data: {
+                ...rest,
+                priceMonthly: priceMonthly ? Number(priceMonthly) : 0,
+                defaultFlags: defaultFlags || {},
+                defaultLimits: defaultLimits || {}
+            }
+        });
+        res.status(201).json({ ...plan, _id: plan.id });
     }
     catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 // PATCH /sa/plans/:id
-// PATCH /sa/plans/:id
 export const updatePlan = async (req, res) => {
     try {
-        const { defaultFlags, ...otherUpdates } = req.body;
+        const { defaultFlags, defaultLimits, priceMonthly, ...otherUpdates } = req.body;
         console.log(`[SuperAdmin] Updating plan ${req.params.id}:`, req.body);
-        let plan = await Plan.findById(req.params.id);
+        let plan = await prisma.plan.findUnique({ where: { id: String(req.params.id) } });
         if (!plan)
             return res.status(404).json({ message: 'Plan not found' });
-        // Update basic fields
-        Object.assign(plan, otherUpdates);
-        // Update Flags safely
+        const updatedData = { ...otherUpdates };
+        if (priceMonthly !== undefined) {
+            updatedData.priceMonthly = Number(priceMonthly);
+        }
         if (defaultFlags) {
-            console.log(`[SuperAdmin] Updating flags for plan ${plan.name} (${plan._id})`);
-            // Ensure plan.defaultFlags is a Map
-            if (!plan.defaultFlags) {
-                plan.defaultFlags = new Map();
-            }
-            else if (!(plan.defaultFlags instanceof Map)) {
-                // If it's somehow an object, convert it
-                console.warn(`[SuperAdmin] defaultFlags was not a Map, converting...`);
-                plan.defaultFlags = new Map(Object.entries(plan.defaultFlags));
-            }
-            for (const [key, value] of Object.entries(defaultFlags)) {
-                plan.defaultFlags.set(key, value);
-            }
-            plan.markModified('defaultFlags');
+            updatedData.defaultFlags = {
+                ...(plan.defaultFlags ? plan.defaultFlags : {}),
+                ...defaultFlags
+            };
+        }
+        if (defaultLimits) {
+            updatedData.defaultLimits = {
+                ...(plan.defaultLimits ? plan.defaultLimits : {}),
+                ...defaultLimits
+            };
         }
         // 1. SAVE WITH CONFIRMATION
-        // Enforce majority write concern to ensure data is persisted to replica set
-        await plan.save({ w: 'majority' });
-        // 2. VERIFY PERSISTENCE
-        // Fetch fresh from DB to confirm it really saved
-        const verifyPlan = await Plan.findById(plan._id);
-        const savedFlags = verifyPlan && verifyPlan.defaultFlags instanceof Map ? Object.fromEntries(verifyPlan.defaultFlags) : verifyPlan?.defaultFlags;
-        console.log(`[SuperAdmin] Plan ${plan._id} updated & verified.`);
+        plan = await prisma.plan.update({
+            where: { id: String(req.params.id) },
+            data: updatedData
+        });
+        console.log(`[SuperAdmin] Plan ${plan.id} updated & verified.`);
         // 3. SYNCHRONOUS AUTO-CLEANUP (Safer)
-        // Only run if we are SURE the plan updated.
         if (defaultFlags) {
             console.log('[Sync] Starting Auto-Cleanup of redundant overrides...');
             try {
-                const Company = (await import('../../models/Global/Company.js')).Company;
-                const companies = await Company.find({ planId: plan._id });
+                const companies = await prisma.company.findMany({
+                    where: { planId: plan.id }
+                });
                 for (const company of companies) {
-                    if (!company.featureFlags || (company.featureFlags instanceof Map && company.featureFlags.size === 0))
-                        continue;
                     let modified = false;
-                    // Ensure company.featureFlags is a Map
-                    if (!(company.featureFlags instanceof Map)) {
-                        company.featureFlags = new Map(Object.entries(company.featureFlags));
-                    }
+                    let companyFlags = typeof company.featureFlags === 'object' && company.featureFlags !== null ? { ...company.featureFlags } : {};
+                    if (Object.keys(companyFlags).length === 0)
+                        continue;
                     for (const [key, value] of Object.entries(defaultFlags)) {
-                        // If company has an override for this key
-                        if (company.featureFlags.has(key)) {
-                            const overrideVal = company.featureFlags.get(key);
-                            // And that override matches the NEW plan default we JUST verified
-                            if (overrideVal === Boolean(value)) {
-                                // Remove the override to restore inheritance
-                                company.featureFlags.delete(key);
-                                modified = true;
-                            }
+                        if (companyFlags[key] !== undefined && companyFlags[key] === Boolean(value)) {
+                            delete companyFlags[key];
+                            modified = true;
                         }
                     }
                     if (modified) {
-                        company.markModified('featureFlags');
-                        await company.save({ w: 'majority' }); // Also enforce consistency here
+                        await prisma.company.update({
+                            where: { id: company.id },
+                            data: { featureFlags: companyFlags }
+                        });
                         console.log(`[Sync] Cleaned up redundant overrides for ${company.name}`);
                     }
                 }
@@ -93,10 +89,9 @@ export const updatePlan = async (req, res) => {
             }
             catch (err) {
                 console.error("[Sync] Error cleaning up overrides:", err);
-                // We do NOT fail the request here, but we log the error.
             }
         }
-        res.json(plan);
+        res.json({ ...plan, _id: plan.id });
     }
     catch (error) {
         console.error("[SuperAdmin] Update Plan Error:", error);
@@ -106,14 +101,16 @@ export const updatePlan = async (req, res) => {
 // PATCH /sa/plans/:id/archive
 export const archivePlan = async (req, res) => {
     try {
-        const plan = await Plan.findById(req.params.id);
-        if (!plan)
-            return res.status(404).json({ message: 'Plan not found' });
-        plan.isArchived = true;
-        await plan.save();
+        const plan = await prisma.plan.update({
+            where: { id: String(req.params.id) },
+            data: { isArchived: true }
+        });
         res.json({ message: 'Plan archived successfully', plan });
     }
     catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({ message: 'Plan not found' });
+        }
         res.status(500).json({ message: error.message });
     }
 };

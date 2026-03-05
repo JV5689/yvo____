@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Calendar, DollarSign, Briefcase, Mail, Phone, Clock, FileText } from 'lucide-react';
+import { X, User, Calendar, IndianRupee, Briefcase, Mail, Phone, Clock, FileText } from 'lucide-react';
 import api from '../../services/api';
 
 export default function EmployeeDetailsModal({ employee, onClose }) {
@@ -10,22 +10,22 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (employee?._id) {
+        if (employee?.id) {
             fetchEmployeeDetails();
         }
-    }, [employee]);
+    }, [employee, fetchEmployeeDetails]);
 
-    const fetchEmployeeDetails = async () => {
+    const fetchEmployeeDetails = React.useCallback(async () => {
         try {
             setLoading(true);
             const companyId = localStorage.getItem('companyId');
 
             // Fetch real salary records for this employee
             const salaryRes = await api.get('/employees/salary-records', {
-                params: { companyId, employeeId: employee._id }
+                params: { companyId, employeeId: employee.id }
             });
 
-            const records = salaryRes.data.map((record, index) => {
+            const records = salaryRes.data.map((record) => {
                 // Robustness: If bonus is 0 but Math doesn't add up, infer it (for legacy data)
                 const storedBonus = record.bonus || 0;
                 const storedDeduction = record.deductionAmount || 0;
@@ -48,7 +48,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
             // Fetch real leave stats
             // Get all leave requests for this employee
             const leaveRes = await api.get('/employees/leaves', {
-                params: { companyId, employeeId: employee._id }
+                params: { companyId, employeeId: employee.id }
             });
             const leaves = leaveRes.data;
 
@@ -82,7 +82,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [employee.id, employee.freeLeavesPerMonth]);
 
     if (!employee) return null;
 
@@ -97,12 +97,6 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900">{employee.firstName} {employee.lastName}</h2>
-                            <div className="flex items-center gap-2 text-slate-500 text-sm mt-1">
-                                <Briefcase size={14} />
-                                <span>{employee.position}</span>
-                                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                <span>{employee.department || 'No Department'}</span>
-                            </div>
                             <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold mt-2 \${employee.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                                 <span className={`w-1.5 h-1.5 rounded-full \${employee.status === 'Active' ? 'bg-green-500' : 'bg-slate-400'}`}></span>
                                 {employee.status}
@@ -185,7 +179,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                                     <div className="space-y-6">
                                         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                                             <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider flex items-center gap-2">
-                                                <DollarSign size={16} className="text-brand" /> Compensation
+                                                <IndianRupee size={16} className="text-brand" /> Compensation
                                             </h3>
                                             <div className="p-4 bg-green-50 rounded-lg border border-green-100 flex items-center justify-between mb-4">
                                                 <div>
@@ -193,7 +187,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                                                     <p className="text-2xl font-black text-green-700">₹{employee.salary?.toLocaleString()}</p>
                                                 </div>
                                                 <div className="w-10 h-10 rounded-full bg-green-200 flex items-center justify-center text-green-700">
-                                                    <DollarSign size={20} />
+                                                    <IndianRupee size={20} />
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
@@ -278,7 +272,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                                         {upcomingLeaves.length > 0 ? (
                                             <div className="space-y-3">
                                                 {upcomingLeaves.map(leave => (
-                                                    <div key={leave._id} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm flex justify-between items-center">
+                                                    <div key={leave.id} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm flex justify-between items-center">
                                                         <div>
                                                             <p className="font-bold text-slate-800 text-sm">{leave.type}</p>
                                                             <p className="text-xs text-slate-500">

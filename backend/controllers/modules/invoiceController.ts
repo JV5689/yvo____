@@ -1,157 +1,221 @@
 import { Request, Response } from 'express';
-import { Invoice } from '../../models/Modules/Invoice.js';
+import { prisma } from '../../src/config/db.js';
+import { AuthRequest } from '../../src/middleware/auth.js';
+import { AppError } from '../../src/middleware/errorHandler.js';
 
 // Get all invoices
 export const getInvoices = async (req: Request, res: Response) => {
-    try {
-        const { companyId, isDeleted } = req.query;
+    const { companyId } = (req as AuthRequest).user!;
+    const { isDeleted } = req.query;
 
-        if (!companyId) {
-            return res.status(400).json({ message: 'Company ID is required' });
-        }
+    const invoices = await prisma.invoice.findMany({
+        where: {
+            companyId: companyId!,
+            isDeleted: isDeleted === 'true'
+        },
+        orderBy: { date: 'desc' }
+    });
+    res.status(200).json(invoices);
+};
 
-        const filter = {
-            companyId,
-            isDeleted: isDeleted === 'true' // Convert string 'true' to boolean true, else false
-        };
+// Get next sequential invoice number
+export const getNextInvoiceNumber = async (req: Request, res: Response) => {
+    const { companyId } = (req as AuthRequest).user!;
 
-        const invoices = await Invoice.find(filter).sort({ date: -1 });
-        res.status(200).json(invoices);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    const count = await prisma.invoice.count({
+        where: { companyId: companyId! }
+    });
+
+    const nextNumber = `INV-${String(count + 1).padStart(4, '0')}`;
+    res.status(200).json({ invoiceNumber: nextNumber });
 };
 
 // Get single invoice
 export const getInvoiceById = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const invoice = await Invoice.findById(id).populate('customerId', 'name email');
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
 
-        if (!invoice || invoice.isDeleted) {
-            return res.status(404).json({ message: 'Invoice not found' });
+    const invoice = await prisma.invoice.findFirst({
+        where: {
+            id: String(id),
+            companyId: companyId!
+        },
+        include: {
+            customer: { select: { name: true, email: true } },
+            items: true
         }
+    });
 
-        res.status(200).json(invoice);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
+    if (!invoice || invoice.isDeleted) {
+        throw new AppError('Invoice not found', 404);
     }
+
+    res.status(200).json(invoice);
 };
 
 // Create invoice
 export const createInvoice = async (req: Request, res: Response) => {
-    try {
-        const { companyId, invoiceNumber, customerId, customerName, clientAddress, gstNumber, date, dueDate, items, status } = req.body;
+    const { companyId } = (req as AuthRequest).user!;
+    const {
+        invoiceNumber, customerId, customerName, clientAddress, gstNumber,
+        date, items, status, templateId, layout, taxRate: providedTaxRate,
+        customAttributes
+    } = req.body;
 
-        if (!companyId || !invoiceNumber) {
-            return res.status(400).json({ message: 'Company ID and Invoice Number are required' });
-        }
+    const taxRate = providedTaxRate !== undefined ? providedTaxRate : 10;
+    const subtotal = (items || []).reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+    const taxTotal = subtotal * (taxRate / 100);
+    const grandTotal = subtotal + taxTotal;
 
-        // Calculate totals
-        const subtotal = items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
-        const taxTotal = subtotal * 0.1; // Example 10% tax, should be configurable
-        const grandTotal = subtotal + taxTotal;
+    const cleansedItems = (items || []).map((item: any) => {
+        const newItem = { ...item };
+        if (!newItem.inventoryId) delete newItem.inventoryId;
+        newItem.quantity = parseFloat(item.quantity) || 0;
+        newItem.price = parseFloat(item.price) || 0;
+        newItem.total = parseFloat(item.total) || 0;
+        return newItem;
+    });
 
-        // INVENTORY INTEGRATION: Deduct Stock
-        if (status !== 'DRAFT') { // Only deduct if actual sale
-            for (const item of items) {
-                if (item.inventoryId) { // Ensure frontend sends inventoryId
-                    const inventoryItem = await (await import('../../models/Modules/InventoryItem.js')).InventoryItem.findById(item.inventoryId);
-                    if (inventoryItem) {
-                        if (inventoryItem.quantityOnHand < item.quantity) {
-                            return res.status(400).json({ message: `Insufficient stock for ${item.description}` });
-                        }
-                        inventoryItem.quantityOnHand -= item.quantity;
-                        await inventoryItem.save();
+    // Transaction for stock update and invoice creation
+    const newInvoice = await prisma.$transaction(async (tx) => {
+        if (status !== 'DRAFT') {
+            for (const item of cleansedItems) {
+                if (item.inventoryId) {
+                    const inventoryItem = await tx.inventoryItem.findFirst({
+                        where: { id: item.inventoryId, companyId: companyId! }
+                    });
+                    if (!inventoryItem || inventoryItem.quantityOnHand < item.quantity) {
+                        throw new AppError(`Insufficient stock for ${item.description}`, 400);
                     }
+                    await tx.inventoryItem.update({
+                        where: { id: inventoryItem.id },
+                        data: { quantityOnHand: { decrement: item.quantity } }
+                    });
                 }
             }
         }
 
-        const newInvoice = new Invoice({
-            companyId,
-            invoiceNumber,
-            customerId,
-            customerName,
-            clientAddress,
-            gstNumber,
-            date,
-            dueDate,
-            items,
-            subtotal,
-            taxTotal,
-            grandTotal,
-            status: status || 'DRAFT'
+        return await tx.invoice.create({
+            data: {
+                companyId: companyId!,
+                invoiceNumber: String(invoiceNumber),
+                customerId: String(customerId),
+                customerName: String(customerName || ''),
+                clientAddress: String(clientAddress || ''),
+                gstNumber: gstNumber ? String(gstNumber) : undefined,
+                date: new Date(date),
+                subtotal,
+                taxTotal,
+                grandTotal,
+                status: status || 'DRAFT',
+                templateId: templateId ? String(templateId) : undefined,
+                layout: layout || [],
+                customAttributes: customAttributes || [],
+                taxRate,
+                items: { create: cleansedItems }
+            },
+            include: { items: true }
         });
+    });
 
-        await newInvoice.save();
-
-        // FINANCE INTEGRATION: Add Revenue
-        if (status === 'PAID') {
-            const Expense = (await import('../../models/Modules/Expense.js')).Expense;
-            const revenueEntry = new Expense({
-                companyId,
-                description: `Invoice Revenue #${invoiceNumber} - ${customerName}`,
-                amount: grandTotal,
-                category: 'Sales',
-                date: date || new Date(),
-                type: 'INCOME', // New ENUM type needed in Expense model? Or just positive expense? Convention: Expense is negative usually, but let's assume type field handles it.
-                // Actually existing Expense model likely only handles expenses.
-                // To avoid complex refactor, I'll store it as 'Income' category or ensure Expense model supports type.
-                // Checking expense model...
-            });
-            // Let's assume we need to update Expense model to support type 'INCOME' if it doesn't already. 
-            // For now, I'll save it. Ideally, Finance should calculate Revenue from Invoices directly, but user asked to "connect".
-            // A better approach: Finance Page calculates Total Revenue by summing PAID invoices.
-            // I will NOT duplicate data into Expenses to avoid sync hell. I will update Finance.jsx to fetch Invoices for Revenue.
-        }
-
-        res.status(201).json(newInvoice);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(201).json(newInvoice);
 };
 
 // Update invoice
 export const updateInvoice = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body;
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
 
-        // Recalculate totals if items changed
-        if (updates.items) {
-            const subtotal = updates.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
-            const taxTotal = subtotal * 0.1;
-            updates.subtotal = subtotal;
-            updates.taxTotal = taxTotal;
-            updates.grandTotal = subtotal + taxTotal;
-        }
+    const existing = await prisma.invoice.findFirst({
+        where: { id: String(id), companyId: companyId! }
+    });
+    if (!existing) throw new AppError('Invoice not found', 404);
 
-        const invoice = await Invoice.findByIdAndUpdate(id, { ...updates, lastModifiedAt: Date.now() }, { new: true });
+    const {
+        invoiceNumber, customerId, customerName, clientAddress, gstNumber,
+        date, status, templateId, layout, isDeleted, items,
+        taxRate: providedTaxRate, customAttributes,
+    } = req.body;
 
-        if (!invoice) {
-            return res.status(404).json({ message: 'Invoice not found' });
-        }
+    const taxRate = providedTaxRate !== undefined ? providedTaxRate : 10;
 
-        res.status(200).json(invoice);
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    const cleansedItems = (items || []).map((item: any) => {
+        const newItem = { ...item };
+        delete newItem.id;
+        delete newItem.invoiceId;
+        delete newItem.invoice;
+        delete newItem.inventory;
+        if (!newItem.inventoryId) delete newItem.inventoryId;
+        newItem.quantity = parseFloat(item.quantity) || 0;
+        newItem.price = parseFloat(item.price) || 0;
+        newItem.total = parseFloat(item.total) || 0;
+        return newItem;
+    });
+
+    const subtotal = cleansedItems.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+    const taxTotal = subtotal * (taxRate / 100);
+    const grandTotal = subtotal + taxTotal;
+
+    const updatedInvoice = await prisma.$transaction(async (tx) => {
+        await tx.invoiceItem.deleteMany({ where: { invoiceId: String(id) } });
+
+        const updates: any = {
+            lastModifiedAt: new Date(),
+            taxRate,
+            subtotal,
+            taxTotal,
+            grandTotal,
+            items: { create: cleansedItems },
+        };
+
+        if (invoiceNumber !== undefined) updates.invoiceNumber = invoiceNumber;
+        if (customerId !== undefined) updates.customerId = customerId;
+        if (customerName !== undefined) updates.customerName = customerName;
+        if (clientAddress !== undefined) updates.clientAddress = clientAddress;
+        if (gstNumber !== undefined) updates.gstNumber = gstNumber;
+        if (date !== undefined) updates.date = new Date(date);
+        if (status !== undefined) updates.status = status;
+        if (templateId !== undefined) updates.templateId = templateId;
+        if (layout !== undefined) updates.layout = layout;
+        if (isDeleted !== undefined) updates.isDeleted = isDeleted;
+        if (customAttributes !== undefined) updates.customAttributes = customAttributes;
+
+        return await tx.invoice.update({
+            where: { id: String(id) },
+            data: updates,
+            include: { items: true }
+        });
+    });
+
+    res.status(200).json(updatedInvoice);
 };
 
-// Delete invoice
+// Delete (soft)
 export const deleteInvoice = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
 
-        const invoice = await Invoice.findByIdAndUpdate(id, { isDeleted: true, lastModifiedAt: Date.now() }, { new: true });
+    const result = await prisma.invoice.updateMany({
+        where: { id: String(id), companyId: companyId! },
+        data: { isDeleted: true, lastModifiedAt: new Date() }
+    });
 
-        if (!invoice) {
-            return res.status(404).json({ message: 'Invoice not found' });
-        }
+    if (result.count === 0) throw new AppError('Invoice not found', 404);
 
-        res.status(200).json({ message: 'Invoice deleted successfully' });
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(200).json({ message: 'Invoice deleted successfully' });
+};
+
+// Restore
+export const restoreInvoice = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { companyId } = (req as AuthRequest).user!;
+
+    const result = await prisma.invoice.updateMany({
+        where: { id: String(id), companyId: companyId! },
+        data: { isDeleted: false, lastModifiedAt: new Date() }
+    });
+
+    if (result.count === 0) throw new AppError('Invoice not found', 404);
+
+    res.status(200).json({ message: 'Invoice restored successfully' });
 };

@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useUI } from '../../context/UIContext';
 import api from '../../services/api';
-import { DollarSign, Clock, Calendar, MessageSquare, X } from 'lucide-react';
+import { IndianRupee, Clock, Calendar, MessageSquare, X, FileText } from 'lucide-react';
 
 const StatCard = ({ icon, label, value, subtext }) => (
-    <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] flex items-center gap-4 hover:translate-y-[-2px] transition-all duration-300">
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100/80">
-            {icon}
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 md:p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] flex items-center gap-4 hover:translate-y-[-2px] transition-all duration-300">
+        <div className="p-3 md:p-3.5 rounded-xl bg-slate-50 border border-slate-100/80">
+            {React.cloneElement(icon, { size: 20, className: icon.props.className + " md:w-6 md:h-6" })}
         </div>
-        <div>
-            <p className="text-[13px] font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
-            <p className="text-2xl font-black text-slate-900">{value}</p>
-            <p className="text-xs font-medium text-slate-400 mt-0.5">{subtext}</p>
+        <div className="min-w-0">
+            <p className="text-[11px] md:text-[13px] font-semibold text-slate-500 uppercase tracking-wider truncate">{label}</p>
+            <p className="text-xl md:text-2xl font-bold text-slate-900 truncate">{value}</p>
+            <p className="text-[10px] md:text-xs font-medium text-slate-400 mt-0.5 truncate">{subtext}</p>
         </div>
     </div>
 );
@@ -20,6 +21,8 @@ const StatCard = ({ icon, label, value, subtext }) => (
 export default function EmployeeHome() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { alert, toast } = useUI();
+    // ... rest of state stays the same ...
     const [stats, setStats] = useState({
         pendingLeaves: 0,
         upcomingEvents: 0,
@@ -33,13 +36,6 @@ export default function EmployeeHome() {
         startDate: '',
         endDate: '',
         reason: ''
-    });
-
-    const [showReportModal, setShowReportModal] = useState(false);
-    const [reportForm, setReportForm] = useState({
-        tasksCompleted: '',
-        issues: '',
-        nextDayPlan: ''
     });
 
     const fetchStats = async () => {
@@ -77,48 +73,42 @@ export default function EmployeeHome() {
         e.preventDefault();
         try {
             await api.post('/employee/dashboard/leaves', leaveForm);
-            alert('Leave application submitted successfully!');
+            toast.success('Leave application submitted successfully!');
             setShowLeaveModal(false);
             setLeaveForm({ type: 'Sick Leave', startDate: '', endDate: '', reason: '' });
             fetchStats(); // Refresh stats
         } catch (err) {
             console.error(err);
-            alert('Failed to apply for leave');
+            alert('Error', 'Failed to apply for leave', 'error');
         }
     };
 
-    const handleSubmitReport = async (e) => {
-        e.preventDefault();
-        try {
-            await api.post('/employee/dashboard/reports', reportForm);
-            alert('Daily report submitted successfully!');
-            setShowReportModal(false);
-            setReportForm({ tasksCompleted: '', issues: '', nextDayPlan: '' });
-        } catch (err) {
-            console.error(err);
-            if (err.response?.status === 400) {
-                alert(err.response.data.message);
-            } else {
-                alert('Failed to submit report');
-            }
-        }
-    };
 
-    if (loading) return <div>Loading dashboard...</div>;
+
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-500 font-bold animate-pulse">Loading dashboard...</p>
+        </div>
+    );
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight">Welcome Back to {user.company?.name || user.companyId?.name || "the Portal"}!</h1>
-                <p className="text-slate-500 font-medium">You are logged into <span className="text-blue-600 font-bold">{user.company?.name || user.companyId?.name || "your company portal"}</span></p>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col gap-1.5">
+                <h1 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+                    Welcome Back, <span className="text-blue-600">{user.firstName}!</span>
+                </h1>
+                <p className="text-sm md:text-base text-slate-500 font-medium opacity-80">
+                    Your daily overview for <span className="text-slate-900 border-b-2 border-blue-100">{(typeof user.company === 'object' ? user.company?.name : null) || user.companyId?.name || "your portal"}</span>
+                </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
-                    icon={<DollarSign className="text-blue-600" />}
+                    icon={<IndianRupee className="text-blue-600" />}
                     label="Last Salary"
-                    value={stats.lastSalary ? `₹${stats.lastSalary.amount}` : 'N/A'}
-                    subtext={stats.lastSalary ? stats.lastSalary.payPeriod : '-'}
+                    value={stats.lastSalary ? `₹${stats.lastSalary.amount.toLocaleString()}` : 'N/A'}
+                    subtext={stats.lastSalary ? stats.lastSalary.payPeriod : 'No records'}
                 />
                 <StatCard
                     icon={<Clock className="text-orange-600" />}
@@ -127,64 +117,68 @@ export default function EmployeeHome() {
                     subtext="Awaiting approval"
                 />
                 <StatCard
-                    icon={<Calendar className="text-blue-600" />}
-                    label="Upcoming Events"
+                    icon={<Calendar className="text-emerald-600" />}
+                    label="Events"
                     value={stats.upcomingEvents}
-                    subtext="Scheduled"
+                    subtext="Next 7 days"
                 />
                 <StatCard
                     icon={<MessageSquare className="text-purple-600" />}
                     label="Broadcasts"
                     value={stats.unreadBroadcasts}
-                    subtext="Recent messages"
+                    subtext="Unread messages"
                 />
             </div>
 
             {/* Quick Actions */}
-            <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/30 p-8 shadow-sm">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-800 mb-1">Quick Actions</h3>
-                        <p className="text-slate-500 text-sm font-medium">Manage your requests and schedule in one click</p>
-                    </div>
-                    <div className="flex gap-4 w-full sm:w-auto">
-                        <button
-                            onClick={() => setShowLeaveModal(true)}
-                            className="flex-1 sm:flex-none px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 font-bold"
-                        >
-                            Apply for Leave
-                        </button>
-                        <button
-                            onClick={() => setShowReportModal(true)}
-                            className="flex-1 sm:flex-none px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200 font-bold"
-                        >
-                            Fill Daily Report
-                        </button>
-                        <button
-                            onClick={() => navigate('/employee-dashboard/calendar')}
-                            className="flex-1 sm:flex-none px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition font-bold"
-                        >
-                            View Calendar
-                        </button>
-                    </div>
+            <section>
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <div className="w-1 h-5 bg-blue-600 rounded-full"></div>
+                    Quick Actions
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                        onClick={() => setShowLeaveModal(true)}
+                        className="group flex flex-col items-center md:items-start p-6 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-xl hover:border-blue-100 transition-all duration-300 active:scale-[0.98]"
+                    >
+                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors mb-4">
+                            <Clock size={24} />
+                        </div>
+                        <h4 className="font-semibold text-slate-900 mb-1">Apply for Leave</h4>
+                        <p className="text-xs font-medium text-slate-400 text-center md:text-left">Submit a new leave request for approval</p>
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/employee-dashboard/calendar')}
+                        className="group flex flex-col items-center md:items-start p-6 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-xl hover:border-purple-100 transition-all duration-300 active:scale-[0.98]"
+                    >
+                        <div className="p-3 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors mb-4">
+                            <Calendar size={24} />
+                        </div>
+                        <h4 className="font-semibold text-slate-900 mb-1">Calendar</h4>
+                        <p className="text-xs font-medium text-slate-400 text-center md:text-left">View upcoming events and holidays</p>
+                    </button>
                 </div>
-            </div>
+            </section>
 
             {/* LEAVE APPLICATION MODAL */}
             {showLeaveModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50/50">
-                            <h2 className="text-lg font-bold text-slate-800">Apply for Leave</h2>
-                            <button onClick={() => setShowLeaveModal(false)} className="text-slate-400 hover:text-slate-600">
-                                <X size={20} />
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-end md:items-center justify-center z-50 p-0 md:p-4">
+                    <div className="bg-white rounded-t-3xl md:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in slide-in-from-bottom-full md:slide-in-from-bottom-4 duration-300">
+                        <div className="flex justify-between items-center p-5 md:p-6 border-b border-slate-50 bg-slate-50/50">
+                            <div>
+                                <h2 className="text-lg md:text-xl font-bold text-slate-900">Apply for Leave</h2>
+                                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">New Application</p>
+                            </div>
+                            <button onClick={() => setShowLeaveModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-full transition-all">
+                                <X size={24} />
                             </button>
                         </div>
-                        <form onSubmit={handleApplyLeave} className="p-6 space-y-4">
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 mb-1 block">Leave Type</label>
+                        <form onSubmit={handleApplyLeave} className="p-6 md:p-8 space-y-5">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest pl-1">Leave Type</label>
                                 <select
-                                    className="w-full border border-slate-200 p-2 rounded-lg bg-white"
+                                    className="w-full border-2 border-slate-100 p-3 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-all font-semibold text-slate-700 appearance-none"
                                     value={leaveForm.type}
                                     onChange={e => setLeaveForm({ ...leaveForm, type: e.target.value })}
                                 >
@@ -195,40 +189,40 @@ export default function EmployeeHome() {
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Start Date</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Start Date</label>
                                     <input
                                         type="date"
                                         required
-                                        className="w-full border border-slate-200 p-2 rounded-lg"
+                                        className="w-full border-2 border-slate-100 p-3 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-all font-semibold text-slate-700"
                                         value={leaveForm.startDate}
                                         onChange={e => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
                                     />
                                 </div>
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block">End Date</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">End Date</label>
                                     <input
                                         type="date"
                                         required
-                                        className="w-full border border-slate-200 p-2 rounded-lg"
+                                        className="w-full border-2 border-slate-100 p-3 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-all font-semibold text-slate-700"
                                         value={leaveForm.endDate}
                                         onChange={e => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
                                     />
                                 </div>
                             </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 mb-1 block">Reason</label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Reason</label>
                                 <textarea
                                     required
                                     rows="3"
-                                    className="w-full border border-slate-200 p-2 rounded-lg"
+                                    className="w-full border-2 border-slate-100 p-4 rounded-xl bg-slate-50 focus:bg-white focus:border-blue-500 outline-none transition-all font-semibold text-slate-700 placeholder:text-slate-300"
                                     value={leaveForm.reason}
                                     onChange={e => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                                    placeholder="Brief reason for leave..."
+                                    placeholder="Why are you applying for leave?"
                                 />
                             </div>
                             <div className="pt-2">
-                                <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                                <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm uppercase tracking-widest shadow-lg shadow-blue-200 transition-all duration-200 active:scale-[0.98]">
                                     Submit Request
                                 </button>
                             </div>
@@ -236,58 +230,7 @@ export default function EmployeeHome() {
                     </div>
                 </div>
             )}
-            {/* Report MODAL */}
-            {showReportModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50/50">
-                            <h2 className="text-lg font-bold text-slate-800">Daily Work Report</h2>
-                            <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-slate-600">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSubmitReport} className="p-6 space-y-4">
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 mb-1 block">Tasks Completed Today</label>
-                                <textarea
-                                    required
-                                    rows="3"
-                                    className="w-full border border-slate-200 p-2 rounded-lg"
-                                    value={reportForm.tasksCompleted}
-                                    onChange={e => setReportForm({ ...reportForm, tasksCompleted: e.target.value })}
-                                    placeholder="List tasks you finished..."
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 mb-1 block">Issues / Blockers</label>
-                                <textarea
-                                    rows="2"
-                                    className="w-full border border-slate-200 p-2 rounded-lg"
-                                    value={reportForm.issues}
-                                    onChange={e => setReportForm({ ...reportForm, issues: e.target.value })}
-                                    placeholder="Any problems encountered?"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 mb-1 block">Plan for Tomorrow</label>
-                                <textarea
-                                    rows="2"
-                                    className="w-full border border-slate-200 p-2 rounded-lg"
-                                    value={reportForm.nextDayPlan}
-                                    onChange={e => setReportForm({ ...reportForm, nextDayPlan: e.target.value })}
-                                    placeholder="What will you work on next?"
-                                />
-                            </div>
 
-                            <div className="pt-2">
-                                <button type="submit" className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-lg shadow-green-200 transition">
-                                    Submit Daily Report
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

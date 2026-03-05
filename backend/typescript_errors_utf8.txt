@@ -1,0 +1,228 @@
+﻿controllers/employeeFeatureController.ts(106,17): error TS2561: Object literal may only specify known properties, but 'group' does not exist in type 'BroadcastGroupMemberWhereInput'. Did you mean to write 'groupId'?
+controllers/employeeFeatureController.ts(123,13): error TS2322: Type '{ sender: { select: { fullName: true; }; }; }' is not assignable to type 'never'.
+controllers/invoiceTemplateController.ts(33,13): error TS2322: Type '{ company: { select: { name: true; }; }; }' is not assignable to type 'never'.
+controllers/invoiceTemplateController.ts(85,17): error TS2353: Object literal may only specify known properties, and 'items' does not exist in type '(Without<InvoiceTemplateCreateInput, InvoiceTemplateUncheckedCreateInput> & InvoiceTemplateUncheckedCreateInput) | (Without<...> & InvoiceTemplateCreateInput)'.
+controllers/invoiceTemplateController.ts(142,13): error TS2322: Type '{ items: true; }' is not assignable to type 'never'.
+controllers/modules/customerController.ts(13,13): error TS2353: Object literal may only specify known properties, and 'invoices' does not exist in type 'CustomerInclude<DefaultArgs>'.
+controllers/modules/customerController.ts(21,40): error TS2339: Property 'invoices' does not exist on type '{ id: string; name: string; email: string | null; phone: string | null; address: string | null; companyId: string; lastModifiedAt: Date; isDeleted: boolean; taxId: string | null; }'.
+controllers/modules/customerController.ts(21,57): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+controllers/modules/customerController.ts(21,62): error TS7006: Parameter 'inv' implicitly has an 'any' type.
+controllers/modules/customerController.ts(64,13): error TS2353: Object literal may only specify known properties, and 'invoices' does not exist in type 'CustomerInclude<DefaultArgs>'.
+controllers/modules/customerController.ts(80,36): error TS2339: Property 'invoices' does not exist on type '{ id: string; name: string; email: string | null; phone: string | null; address: string | null; companyId: string; lastModifiedAt: Date; isDeleted: boolean; taxId: string | null; }'.
+controllers/modules/customerController.ts(81,17): error TS7006: Parameter 'inv' implicitly has an 'any' type.
+controllers/modules/customerController.ts(82,18): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+controllers/modules/customerController.ts(82,23): error TS7006: Parameter 'inv' implicitly has an 'any' type.
+controllers/modules/customerController.ts(84,36): error TS2339: Property 'payments' does not exist on type '{ id: string; name: string; email: string | null; phone: string | null; address: string | null; companyId: string; lastModifiedAt: Date; isDeleted: boolean; taxId: string | null; }'.
+controllers/modules/customerController.ts(85,18): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+controllers/modules/customerController.ts(85,23): error TS7006: Parameter 'pay' implicitly has an 'any' type.
+controllers/modules/employeeController.ts(19,13): error TS2322: Type '{ employee: { select: { firstName: true; lastName: true; }; }; }' is not assignable to type 'never'.
+controllers/modules/employeeController.ts(64,17): error TS2353: Object literal may only specify known properties, and 'members' does not exist in type '(Without<BroadcastGroupCreateInput, BroadcastGroupUncheckedCreateInput> & BroadcastGroupUncheckedCreateInput) | (Without<...> & BroadcastGroupCreateInput)'.
+controllers/modules/employeeController.ts(82,13): error TS2322: Type '{ members: { include: { employee: { select: { firstName: true; lastName: true; }; }; }; }; }' is not assignable to type 'never'.
+controllers/modules/employeeController.ts(105,17): error TS2353: Object literal may only specify known properties, and 'members' does not exist in type '(Without<BroadcastGroupUpdateInput, BroadcastGroupUncheckedUpdateInput> & BroadcastGroupUncheckedUpdateInput) | (Without<...> & BroadcastGroupUpdateInput)'.
+controllers/modules/employeeController.ts(300,17): error TS2561: Object literal may only specify known properties, but 'group' does not exist in type 'BroadcastGroupMemberWhereInput'. Did you mean to write 'groupId'?
+controllers/modules/employeeController.ts(499,13): error TS2322: Type '{ employee: { select: { firstName: true; lastName: true; }; }; }' is not assignable to type 'never'.
+controllers/modules/invoiceController.ts(44,13): error TS2353: Object literal may only specify known properties, and 'customer' does not exist in type 'InvoiceInclude<DefaultArgs>'.
+controllers/modules/invoiceController.ts(115,17): error TS2353: Object literal may only specify known properties, and 'items' does not exist in type 'Without<InvoiceCreateInput, InvoiceUncheckedCreateInput> & InvoiceUncheckedCreateInput'.
+controllers/modules/invoiceController.ts(117,24): error TS2353: Object literal may only specify known properties, and 'items' does not exist in type 'InvoiceInclude<DefaultArgs>'.
+controllers/modules/invoiceController.ts(186,24): error TS2353: Object literal may only specify known properties, and 'items' does not exist in type 'InvoiceInclude<DefaultArgs>'.
+controllers/modules/paymentController.ts(14,24): error TS2353: Object literal may only specify known properties, and 'customer' does not exist in type 'PaymentInclude<DefaultArgs>'.
+controllers/sa/syncController.ts(21,17): error TS2353: Object literal may only specify known properties, and 'devices' does not exist in type 'CompanyWhereInput'.
+controllers/sa/syncController.ts(111,17): error TS2353: Object literal may only specify known properties, and 'targetModel' does not exist in type '(Without<AuditLogCreateInput, AuditLogUncheckedCreateInput> & AuditLogUncheckedCreateInput) | (Without<...> & AuditLogCreateInput)'.
+routes/authRoutes.ts(12,24): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/backupRoutes.ts(8,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/backupRoutes.ts(9,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/backupRoutes.ts(11,18): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/backupRoutes.ts(12,17): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/backupRoutes.ts(13,20): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/backupRoutes.ts(14,29): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/backupRoutes.ts(15,23): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/customerRoutes.ts(8,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/customerRoutes.ts(9,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/customerRoutes.ts(14,18): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/customerRoutes.ts(15,22): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/customerRoutes.ts(16,23): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/customerRoutes.ts(17,30): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/inventoryRoutes.ts(8,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/inventoryRoutes.ts(9,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/inventoryRoutes.ts(13,18): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/inventoryRoutes.ts(14,22): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/inventoryRoutes.ts(15,23): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/inventoryRoutes.ts(16,29): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/inventoryRoutes.ts(17,33): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/invoiceRoutes.ts(8,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/invoiceRoutes.ts(9,12): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'PathParams'.
+routes/invoiceRoutes.ts(14,18): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/invoiceRoutes.ts(15,22): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/invoiceRoutes.ts(16,23): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+routes/invoiceRoutes.ts(17,30): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to parameter of type 'RequestHandlerParams<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+      Type '(req: AuthRequest, res: Response, next: NextFunction) => void' is not assignable to type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+        Types of parameters 'req' and 'req' are incompatible.
+          Type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to type 'AuthRequest'.
+            Types of property 'user' are incompatible.
+              Type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined' is not assignable to type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; } | undefined'.
+                Property 'isSuperAdmin' is missing in type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }' but required in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.
+services/backupService.ts(117,21): error TS2353: Object literal may only specify known properties, and 'targetModel' does not exist in type 'Without<AuditLogCreateInput, AuditLogUncheckedCreateInput> & AuditLogUncheckedCreateInput'.
+services/backupService.ts(263,17): error TS2353: Object literal may only specify known properties, and 'targetModel' does not exist in type 'Without<AuditLogCreateInput, AuditLogUncheckedCreateInput> & AuditLogUncheckedCreateInput'.
+src/middleware/validate.ts(28,35): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.

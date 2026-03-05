@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Trash2, Upload, Plus, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 export default function ManageClients() {
     const [clients, setClients] = useState([]);
@@ -65,7 +66,17 @@ export default function ManageClients() {
     };
 
     const handleDeleteClient = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this client?')) return;
+        const result = await Swal.fire({
+            title: 'Delete Client?',
+            text: 'Are you sure you want to delete this client?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            reverseButtons: true,
+        });
+        if (!result.isConfirmed) return;
 
         try {
             await api.delete(`/sa/clients/${id}`);

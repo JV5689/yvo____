@@ -52,9 +52,11 @@ export default function Header() {
   }, []);
 
   // Close menu when route changes
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location]);
+  const [prevLocation, setPrevLocation] = useState(location.pathname);
+  if (location.pathname !== prevLocation) {
+    setPrevLocation(location.pathname);
+    if (isMenuOpen) setIsMenuOpen(false);
+  }
 
   const initials = useMemo(() => {
     if (!profile.name) return 'U';

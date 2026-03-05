@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
-import { GoogleLogin } from "@react-oauth/google";
 
 const inputClassName =
   "mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -9,18 +8,12 @@ const inputClassName =
 const phoneInputClassName =
   "flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
 
-const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
 
-const normalizePhone = (countryCode, phone) => {
-  const cc = String(countryCode || "").replace(/[^\d+]/g, "");
-  const p = String(phone || "").replace(/[^\d]/g, "");
-  return cc && p ? `${cc}${p}` : "";
-};
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const [loginMethod, setLoginMethod] = useState("phone"); // Default to phone
+  const loginMethod = "phone"; // Default to phone
 
   const [email, setEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
@@ -29,7 +22,7 @@ export default function Login() {
   const [phone, setPhone] = useState("");
   const [phonePassword, setPhonePassword] = useState("");
 
-  const [rememberMe, setRememberMe] = useState(true);
+  // eslint-disable-next-line no-unused-vars
   const [showPassword, setShowPassword] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -72,13 +65,7 @@ export default function Login() {
     }
   };
 
-  /* ======================
-     GOOGLE LOGIN
-  ====================== */
-  const handleGoogleSuccess = async (credentialResponse) => {
-    // TODO: Implement Google Login via AuthContext
-    setErrorMsg("Google Login not fully wired yet");
-  };
+
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-700">

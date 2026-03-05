@@ -1,83 +1,115 @@
-import { InventoryItem } from '../../models/Modules/InventoryItem.js';
+import { prisma } from '../../src/config/db.js';
+import { AppError } from '../../src/middleware/errorHandler.js';
 // Get all inventory items
 export const getInventory = async (req, res) => {
-    try {
-        const { companyId } = req.query;
-        if (!companyId) {
-            return res.status(400).json({ message: 'Company ID is required' });
-        }
-        const items = await InventoryItem.find({ companyId, isDeleted: false });
-        res.status(200).json(items);
-    }
-    catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    const { companyId } = req.user;
+    const { showDeleted } = req.query;
+    const isDeleted = showDeleted === 'true' ? 1 : 0;
+    // Use parameterized query to prevent SQL injection
+    const items = await prisma.$queryRaw `
+    SELECT * FROM inventoryitem 
+    WHERE companyId = ${companyId} AND isDeleted = ${isDeleted} 
+    ORDER BY name ASC
+  `;
+    res.status(200).json(items);
 };
 // Get single item
 export const getInventoryItemById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const item = await InventoryItem.findById(id);
-        if (!item || item.isDeleted) {
-            return res.status(404).json({ message: 'Item not found' });
+    const { id } = req.params;
+    const { companyId } = req.user;
+    const item = await prisma.inventoryItem.findFirst({
+        where: {
+            id: String(id),
+            companyId: companyId
         }
-        res.status(200).json(item);
+    });
+    if (!item || item.isDeleted) {
+        throw new AppError('Item not found', 404);
     }
-    catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(200).json(item);
 };
 // Create item
 export const createInventoryItem = async (req, res) => {
-    try {
-        const { companyId, sku, name, description, quantityOnHand, reorderLevel, costPrice, sellingPrice, category } = req.body;
-        if (!companyId || !sku || !name) {
-            return res.status(400).json({ message: 'Company ID, SKU, and Name are required' });
-        }
-        const newItem = new InventoryItem({
-            companyId,
-            sku,
-            name,
+    const { companyId } = req.user;
+    const { sku, name, description, quantityOnHand, reorderLevel, sellingPrice, category, image } = req.body;
+    const newItem = await prisma.inventoryItem.create({
+        data: {
+            companyId: companyId,
+            sku: String(sku),
+            name: String(name),
             description,
-            quantityOnHand,
-            reorderLevel,
-            costPrice,
-            sellingPrice,
+            quantityOnHand: quantityOnHand !== undefined ? Number(quantityOnHand) : 0,
+            reorderLevel: reorderLevel !== undefined ? Number(reorderLevel) : 5,
+            sellingPrice: sellingPrice ? Number(sellingPrice) : undefined,
             category
-        });
-        await newItem.save();
-        res.status(201).json(newItem);
+        }
+    });
+    if (image && newItem.id) {
+        await prisma.$executeRaw `UPDATE inventoryitem SET image = ${image} WHERE id = ${newItem.id}`;
     }
-    catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(201).json({ ...newItem, image: image || null });
 };
 // Update item
 export const updateInventoryItem = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body;
-        const item = await InventoryItem.findByIdAndUpdate(id, { ...updates, lastModifiedAt: Date.now() }, { new: true });
-        if (!item) {
-            return res.status(404).json({ message: 'Item not found' });
-        }
-        res.status(200).json(item);
+    const { id } = req.params;
+    const { companyId } = req.user;
+    const updates = { ...req.body };
+    const image = updates.image;
+    delete updates.image;
+    delete updates.companyId;
+    // Verify ownership before update
+    const existing = await prisma.inventoryItem.findFirst({
+        where: { id: String(id), companyId: companyId }
+    });
+    if (!existing)
+        throw new AppError('Item not found', 404);
+    if (updates.quantityOnHand !== undefined)
+        updates.quantityOnHand = Number(updates.quantityOnHand);
+    if (updates.reorderLevel !== undefined)
+        updates.reorderLevel = Number(updates.reorderLevel);
+    if (updates.sellingPrice !== undefined)
+        updates.sellingPrice = Number(updates.sellingPrice);
+    const item = await prisma.inventoryItem.update({
+        where: { id: String(id) },
+        data: { ...updates, lastModifiedAt: new Date() }
+    });
+    if (image !== undefined) {
+        await prisma.$executeRaw `UPDATE inventoryitem SET image = ${image} WHERE id = ${id}`;
     }
-    catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    res.status(200).json({ ...item, image: image !== undefined ? image : null });
 };
-// Delete item
+// Delete item (soft)
 export const deleteInventoryItem = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const item = await InventoryItem.findByIdAndUpdate(id, { isDeleted: true, lastModifiedAt: Date.now() }, { new: true });
-        if (!item) {
-            return res.status(404).json({ message: 'Item not found' });
-        }
-        res.status(200).json({ message: 'Item deleted successfully' });
-    }
-    catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    const { id } = req.params;
+    const { companyId } = req.user;
+    const item = await prisma.inventoryItem.updateMany({
+        where: { id: String(id), companyId: companyId },
+        data: { isDeleted: true, lastModifiedAt: new Date() }
+    });
+    if (item.count === 0)
+        throw new AppError('Item not found', 404);
+    res.status(200).json({ message: 'Item deleted successfully' });
+};
+// Restore item
+export const restoreInventoryItem = async (req, res) => {
+    const { id } = req.params;
+    const { companyId } = req.user;
+    const item = await prisma.inventoryItem.updateMany({
+        where: { id: String(id), companyId: companyId },
+        data: { isDeleted: false, lastModifiedAt: new Date() }
+    });
+    if (item.count === 0)
+        throw new AppError('Item not found', 404);
+    res.status(200).json({ message: 'Item restored successfully' });
+};
+// Delete permanently
+export const deleteItemPermanently = async (req, res) => {
+    const { id } = req.params;
+    const { companyId } = req.user;
+    const result = await prisma.inventoryItem.deleteMany({
+        where: { id: String(id), companyId: companyId }
+    });
+    if (result.count === 0)
+        throw new AppError('Item not found', 404);
+    res.status(200).json({ message: 'Item permanently deleted' });
 };

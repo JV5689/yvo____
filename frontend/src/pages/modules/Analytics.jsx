@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, Users, Package, DollarSign } from 'lucide-react';
+import { TrendingUp, Users, Package, IndianRupee } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import SuperAdminAnalytics from '../super-admin/Analytics';
@@ -72,11 +72,11 @@ function TenantAnalytics() {
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-                        <DollarSign size={24} />
+                        <IndianRupee size={24} />
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Total Expenses</p>
-                        <h3 className="text-2xl font-bold text-slate-800">${stats.finance?.totalExpenses || 0}</h3>
+                        <h3 className="text-2xl font-bold text-slate-800">₹{stats.finance?.totalExpenses || 0}</h3>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">

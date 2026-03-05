@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Save, User, Building, Mail } from 'lucide-react';
 import api from '../../services/api';
+import { useUI } from '../../context/UIContext';
 
 export default function Settings() {
     const { user } = useAuth();
+    const { alert, toast } = useUI();
     const [loading, setLoading] = useState(false);
 
     // In real app, fetch from /api/company/profile
@@ -83,12 +85,12 @@ export default function Settings() {
                 logo: formData.logo
             };
 
-            await api.patch(`/company/${companyId}`, payload);
-            alert("Settings Saved Successfully! Changes will reflect across the admin panel.");
+            await api.patch(`/ company / ${companyId} `, payload);
+            toast.success("Settings Saved Successfully!");
         } catch (err) {
             console.error(err);
             const msg = err.response?.data?.message || err.message || "Unknown error";
-            alert("Failed to save settings: " + msg);
+            await alert("Error", "Failed to save settings: " + msg, "error");
         } finally {
             setLoading(false);
         }

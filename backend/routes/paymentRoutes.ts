@@ -6,9 +6,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/Global/User.js';
-import { Company } from '../models/Global/Company.js';
-import { Plan } from '../models/Global/Plan.js';
+import { prisma } from '../src/config/db.js';
 
 dotenv.config();
 
@@ -69,10 +67,8 @@ router.post('/verify-payment', async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: 'Invalid signature' });
         }
 
-        // --- ACCOUNT CREATION LOGIC ---
-
         // 1. Check if user already exists
-        const userExists = await User.findOne({ email });
+        const userExists = await prisma.user.findUnique({ where: { email } });
         if (userExists) {
             // Payment succeeded but user exists. In a real app, handle this carefully (credit account?).
             // For now, return error asking to login, or maybe updating checking logic.
@@ -84,51 +80,58 @@ router.post('/verify-payment', async (req: Request, res: Response) => {
         }
 
         // 2. Resolve Plan
-        let plan = await Plan.findOne({ code: planId?.toUpperCase() });
+        let plan = planId ? await prisma.plan.findUnique({ where: { code: String(planId).toUpperCase() } }) : null;
         if (!plan && planId) {
-            plan = await Plan.findOne({ code: 'BASIC' });
+            plan = await prisma.plan.findUnique({ where: { code: 'BASIC' } });
         }
         if (!plan) {
-            plan = await Plan.create({ code: 'BASIC', name: 'Starter', priceMonthly: 0 });
+            plan = await prisma.plan.create({ data: { code: 'BASIC', name: 'Starter', priceMonthly: 0 } });
         }
 
         // 3. Create Company
         const apiKey = `sk_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-        const company = await Company.create({
-            name: `${name}'s Company`,
-            planId: plan._id,
-            subscriptionStatus: 'active',
-            featureFlags: plan.defaultFlags || {},
-            apiKey
+        const company = await prisma.company.create({
+            data: {
+                name: `${name}'s Company`,
+                planId: plan.id,
+                subscriptionStatus: 'active',
+                featureFlags: plan.defaultFlags || {},
+                apiKey
+            }
         });
 
         // 4. Create Owner (Company Admin)
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password || 'password123', salt); // fallback password if missing
 
-        const user = await User.create({
-            fullName: name,
-            email,
-            passwordHash,
-            memberships: [{
-                companyId: company._id,
-                role: 'OWNER'
-            }],
-            isSuperAdmin: false
+        const user = await prisma.user.create({
+            data: {
+                fullName: name,
+                email,
+                passwordHash,
+                isSuperAdmin: false,
+                memberships: {
+                    create: [{
+                        companyId: company.id,
+                        role: 'OWNER'
+                    }]
+                }
+            },
+            include: { memberships: true }
         });
 
         // 5. Return Success + Token for Auto-Login
         res.json({
             success: true,
             message: 'Payment verified and account created successfully',
-            token: generateToken((user._id as any).toString()),
+            token: generateToken(user.id),
             user: {
-                _id: user._id,
+                _id: user.id,
                 fullName: user.fullName,
                 email: user.email,
                 role: 'owner',
                 memberships: user.memberships,
-                currentCompanyId: company._id
+                currentCompanyId: company.id
             }
         });
 

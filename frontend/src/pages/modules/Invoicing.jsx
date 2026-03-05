@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Download, Search, Eye, Trash2, RotateCcw, FileText, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
-import Drawer from '../../components/Drawer';
+import Modal from '../../components/Modal';
 import InvoiceBuilder from './InvoiceBuilder';
+import CompanyTemplates from './CompanyTemplates';
 import html2pdf from 'html2pdf.js';
+import { useUI } from '../../context/UIContext';
 
 export default function Invoicing() {
+    const { alert, confirm, prompt } = useUI();
     const [searchTerm, setSearchTerm] = useState('');
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -13,7 +16,6 @@ export default function Invoicing() {
     const [selectedInvoiceId, setSelectedInvoiceId] = useState(null);
     const [isViewDeleted, setIsViewDeleted] = useState(false);
     const [activeTab, setActiveTab] = useState('invoices');
-    const [templates, setTemplates] = useState([]);
 
     // Return Products State
     const [showReturnModal, setShowReturnModal] = useState(false);
@@ -24,27 +26,18 @@ export default function Invoicing() {
     useEffect(() => {
         fetchInvoices();
         fetchConfig();
-        fetchTemplates();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isViewDeleted]);
 
     const fetchConfig = async () => {
         try {
             const res = await api.get('/company/config');
             setCompanyConfig(res.data.company);
-        } catch (e) {
+        } catch {
             console.error("Failed to load company config");
         }
     };
 
-    const fetchTemplates = async () => {
-        try {
-            const companyId = localStorage.getItem('companyId');
-            const res = await api.get('/invoice-templates', { params: { companyId } });
-            setTemplates(res.data);
-        } catch (e) {
-            console.error("Failed to load templates");
-        }
-    };
 
     // Filter Logic
     const [filterPeriod, setFilterPeriod] = useState('all');
@@ -228,12 +221,38 @@ export default function Invoicing() {
 
     const handleDelete = async (e, id) => {
         e.stopPropagation();
-        if (!window.confirm("Move to trash?")) return;
+
+        const inputPass = await prompt(
+            "Security Authorization",
+            "Enter Security Password to Delete Invoice:",
+            "password",
+            "Verify Password",
+            "primary"
+        );
+        if (!inputPass) return;
+
         try {
+            const companyId = localStorage.getItem('companyId');
+            const res = await api.post('/company/verify-password', { password: inputPass, companyId });
+
+            if (!res.data.valid) {
+                await alert("Access Denied", "Incorrect Password! Access Denied.", "error");
+                return;
+            }
+
+            const isConfirmed = await confirm(
+                "Delete Invoice",
+                "Move this invoice to trash?",
+                "Move to Trash",
+                "danger"
+            );
+            if (!isConfirmed) return;
+
             await api.delete(`/invoices/${id}`);
             fetchInvoices();
         } catch (err) {
-            alert("Failed to delete");
+            console.error(err);
+            alert("Delete Failed", "Verification failed or deletion failed", "error");
         }
     };
 
@@ -242,25 +261,15 @@ export default function Invoicing() {
         try {
             await api.patch(`/invoices/${id}`, { isDeleted: false });
             fetchInvoices();
-        } catch (err) {
-            alert("Failed to restore");
+        } catch {
+            alert("Restore Failed", "Failed to restore invoice", "error");
         }
     };
 
-    const handleDeleteTemplate = async (e, id) => {
-        e.stopPropagation();
-        if (!window.confirm("Delete this template?")) return;
-        try {
-            await api.delete(`/invoice-templates/${id}`);
-            fetchTemplates();
-        } catch (err) {
-            alert("Failed to delete template");
-        }
-    };
 
-    const handleReturn = (e) => {
+    const handleReturn = async (e) => {
         e.preventDefault();
-        alert(`Return processed for Invoice #${returnConfig.invoiceNumber || 'Unknown'}. Stock adjusted.`);
+        await alert("Return Processed", `Return processed for Invoice #${returnConfig.invoiceNumber || 'Unknown'}. Stock adjusted.`, "success");
         setShowReturnModal(false);
     };
 
@@ -318,9 +327,12 @@ export default function Invoicing() {
 
     const getStatusStyle = (status) => {
         switch (status) {
+            case 'ISSUED': return 'bg-indigo-100 text-indigo-800 border border-indigo-200';
             case 'PAID': return 'bg-green-100 text-green-800 border border-green-200';
+            case 'DRAFT': return 'bg-slate-100 text-slate-700 border border-slate-200';
             case 'SENT': return 'bg-blue-100 text-blue-800 border border-blue-200';
             case 'OVERDUE': return 'bg-red-100 text-red-800 border border-red-200';
+            case 'CANCELLED': return 'bg-gray-100 text-gray-500 border border-gray-200';
             default: return 'bg-gray-100 text-gray-800 border border-gray-200';
         }
     };
@@ -455,9 +467,9 @@ export default function Invoicing() {
                                 <tbody className="divide-y divide-slate-200">
                                     {invoices.filter(filterInvoices).map((invoice) => (
                                         <tr
-                                            key={invoice._id}
+                                            key={invoice.id}
                                             className="hover:bg-slate-50 cursor-pointer"
-                                            onClick={() => handleSee(invoice._id)}
+                                            onClick={() => handleSee(invoice.id)}
                                         >
                                             <td className="px-6 py-4 text-sm font-medium text-indigo-600">{invoice.invoiceNumber}</td>
                                             <td className="px-6 py-4 text-sm text-slate-600">{invoice.customerName}</td>
@@ -483,12 +495,12 @@ export default function Invoicing() {
                                                         <button onClick={(e) => handleDownload(e, invoice)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition">
                                                             <Download size={18} />
                                                         </button>
-                                                        <button onClick={(e) => handleDelete(e, invoice._id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                                                        <button onClick={(e) => handleDelete(e, invoice.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
                                                             <Trash2 size={18} />
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <button onClick={(e) => handleRestore(e, invoice._id)} className="text-indigo-600 text-xs font-bold">
+                                                    <button onClick={(e) => handleRestore(e, invoice.id)} className="text-indigo-600 text-xs font-bold">
                                                         Restore
                                                     </button>
                                                 )}
@@ -506,50 +518,7 @@ export default function Invoicing() {
                     </div>
                 ) : activeTab === 'templates' ? (
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-semibold text-slate-800">Invoice Templates</h3>
-                            <p className="text-sm text-slate-500">Save frequently used invoices to create new ones quickly.</p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {templates.map(template => (
-                                <div key={template._id} className="border border-slate-200 rounded-xl p-5 hover:border-indigo-300 hover:shadow-md transition-all bg-slate-50 relative group">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <h4 className="font-bold text-slate-800 text-lg">{template.name}</h4>
-                                        {template.type === 'GLOBAL' && (
-                                            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">GLOBAL</span>
-                                        )}
-                                    </div>
-                                    <div className="space-y-1 mb-6">
-                                        <p className="text-sm text-slate-500">Theme: <span className="capitalize">{template.themeIdentifier}</span></p>
-                                        <p className="text-sm text-slate-500">{template.items.length} Items</p>
-                                        <p className="text-sm text-slate-500">Tax Rate: {template.taxRate}%</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => window.location.href = `/dashboard/invoices/new`}
-                                            className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-                                            title="Go to builder and select from dropdown"
-                                        >
-                                            Use Template
-                                        </button>
-                                        {template.type !== 'GLOBAL' && (
-                                            <button
-                                                onClick={(e) => handleDeleteTemplate(e, template._id)}
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                            {templates.length === 0 && (
-                                <div className="col-span-full p-8 text-center border-2 border-dashed border-slate-200 rounded-xl">
-                                    <p className="text-slate-500">No templates found. Create one from the Invoice Builder.</p>
-                                </div>
-                            )}
-                        </div>
+                        <CompanyTemplates />
                     </div>
                 ) : null
             }
@@ -612,17 +581,18 @@ export default function Invoicing() {
                 )
             }
 
-            <Drawer
+            <Modal
                 isOpen={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}
                 title={selectedInvoiceId ? "Invoice Details" : "New Invoice"}
+                maxWidth="max-w-6xl"
             >
                 <InvoiceBuilder
                     key={selectedInvoiceId}
                     invoiceId={selectedInvoiceId}
                     onClose={() => setIsDrawerOpen(false)}
                 />
-            </Drawer>
+            </Modal>
         </div>
     );
 }

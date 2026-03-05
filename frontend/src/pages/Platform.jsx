@@ -3,7 +3,7 @@ import { Check, Zap, Shield, Cloud } from 'lucide-react';
 
 export default function Platform() {
   const features = ["Employees", "Calendar", "Reminder", "Finance", "Invoice", "Inventory", "Report", "Analytics"];
-  
+
   return (
     <div className="py-16">
       <section className="max-w-7xl mx-auto px-6 text-center mb-20">
@@ -25,8 +25,8 @@ export default function Platform() {
       <section className="bg-slate-50 py-20 px-6">
         <h2 className="text-center text-3xl font-bold mb-12">Pricing Plans</h2>
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
-          <PriceCard title="Basic Plan" price="$19" features={['Core Analytics', '5 Users']} />
-          <PriceCard title="Pro Plan" price="$49" features={['AI Analytics', 'Unlimited Users']} popular />
+          <PriceCard title="Basic Plan" price="₹19" features={['Core Analytics', '5 Users']} />
+          <PriceCard title="Pro Plan" price="₹49" features={['AI Analytics', 'Unlimited Users']} popular />
           <PriceCard title="Enterprise" price="Custom" features={['Dedicated Manager', 'SLA Guarantee']} />
         </div>
       </section>
@@ -39,7 +39,7 @@ const PriceCard = ({ title, price, features, popular }) => (
     <h3 className="text-xl font-bold">{title}</h3>
     <p className="text-4xl font-black text-blue-600 my-6">{price}</p>
     <ul className="space-y-4 mb-8">
-      {features.map(f => <li key={f} className="text-slate-500 text-sm flex gap-2"><Check size={16} className="text-blue-600"/> {f}</li>)}
+      {features.map(f => <li key={f} className="text-slate-500 text-sm flex gap-2"><Check size={16} className="text-blue-600" /> {f}</li>)}
     </ul>
     <button className={`w-full py-3 rounded-xl font-bold ${popular ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}>Get Started</button>
   </div>

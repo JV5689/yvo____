@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Download, FileText, Database, Clock, CheckCircle, AlertCircle, Loader2, Calendar, Filter, User, Users, Building2, DollarSign, Receipt, Settings } from 'lucide-react';
+import { Download, FileText, Database, Clock, CheckCircle, AlertCircle, Loader2, Users, Building2, IndianRupee, Receipt } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import html2pdf from 'html2pdf.js';
 import { useSearchParams } from 'react-router-dom';
+import { useUI } from '../../context/UIContext';
 
 export default function BackupAndReports() {
+    const { confirm } = useUI();
     const [searchParams] = useSearchParams();
     const queryCompanyId = searchParams.get('companyId');
 
@@ -38,13 +40,14 @@ export default function BackupAndReports() {
         } else {
             setLoading(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedCompanyId]);
 
     const fetchCompanies = async () => {
         try {
             const res = await api.get('/sa/companies', { params: { limit: 100 } });
             setCompanies(res.data.companies || []);
-        } catch (e) {
+        } catch {
             console.error("Failed to fetch companies");
         }
     };
@@ -58,6 +61,7 @@ export default function BackupAndReports() {
             const interval = setInterval(fetchBackups, 5000);
             return () => clearInterval(interval);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [backups]);
 
     const fetchConfig = async () => {
@@ -65,7 +69,7 @@ export default function BackupAndReports() {
         try {
             const res = await api.get('/company/config', { headers: { 'x-company-id': selectedCompanyId } });
             setCompanyConfig(res.data.company);
-        } catch (e) {
+        } catch {
             console.error("Failed to load company config");
         }
     };
@@ -75,8 +79,8 @@ export default function BackupAndReports() {
         try {
             const res = await api.get('/backups', { headers: { 'x-company-id': selectedCompanyId } });
             setBackups(res.data);
-        } catch (error) {
-            console.error("Failed to fetch backups", error);
+        } catch {
+            console.error("Failed to fetch backups");
         } finally {
             setLoading(false);
         }
@@ -89,7 +93,7 @@ export default function BackupAndReports() {
             const res = await api.post('/backups', { filters }, { headers: { 'x-company-id': selectedCompanyId } });
             setBackups([res.data, ...backups]);
             toast.success("Backup job started!");
-        } catch (error) {
+        } catch {
             toast.error("Failed to start backup");
         } finally {
             setCreating(false);
@@ -123,12 +127,13 @@ export default function BackupAndReports() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this backup?")) return;
+        const ok = await confirm('Delete Backup', "Are you sure you want to delete this backup?", 'Delete');
+        if (!ok) return;
         try {
             await api.delete(`/backups/${id}`, { headers: { 'x-company-id': selectedCompanyId } });
             setBackups(backups.filter(b => b._id !== id));
             toast.success("Backup deleted");
-        } catch (error) {
+        } catch {
             toast.error("Failed to delete backup");
         }
     };
@@ -179,7 +184,7 @@ export default function BackupAndReports() {
             html2pdf().from(element).save(`Finance_Report_${new Date().toISOString().split('T')[0]}.pdf`);
             toast.dismiss();
             toast.success("Finance report downloaded");
-        } catch (e) {
+        } catch {
             toast.dismiss();
             toast.error("Failed to generate report");
         }
@@ -217,7 +222,7 @@ export default function BackupAndReports() {
 
             toast.dismiss();
             toast.success(`${type} report downloaded`);
-        } catch (e) {
+        } catch {
             toast.dismiss();
             toast.error("Failed to generate CSV");
         }
@@ -327,7 +332,7 @@ export default function BackupAndReports() {
                             <div className="space-y-3">
                                 <ReportAction icon={<Receipt size={18} />} label="Finance Report (PDF)" onClick={generateFinanceReport} />
                                 <ReportAction icon={<Users size={18} />} label="Payroll Export (CSV)" onClick={() => downloadCSVReport('payroll')} />
-                                <ReportAction icon={<DollarSign size={18} />} label="Revenue Export (CSV)" onClick={() => downloadCSVReport('revenue')} />
+                                <ReportAction icon={<IndianRupee size={18} />} label="Revenue Export (CSV)" onClick={() => downloadCSVReport('revenue')} />
                             </div>
                         </div>
                     </div>

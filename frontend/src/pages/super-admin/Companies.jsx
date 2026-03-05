@@ -3,11 +3,13 @@ import api from '../../services/api';
 import {
     Search, Filter, MoreHorizontal, Download,
     ChevronDown, HardDrive, Settings, X, Save,
-    Calendar, CreditCard, Building, User, Eye, Layers, Plus, Trash2
+    Calendar, CreditCard, Building, User, Eye, Layers, Plus, Trash2, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useUI } from '../../context/UIContext';
 
 export default function Companies() {
+    const { confirm } = useUI();
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,11 +24,7 @@ export default function Companies() {
     const [selectedPlanId, setSelectedPlanId] = useState('');
     const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('');
     const [status, setStatus] = useState('active');
-
-    useEffect(() => {
-        fetchCompanies();
-        fetchPlans();
-    }, []);
+    const [newPassword, setNewPassword] = useState('');
 
     const fetchCompanies = () => {
         setLoading(true);
@@ -41,6 +39,12 @@ export default function Companies() {
             .then(res => setPlans(res.data || []))
             .catch(err => console.error(err));
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchCompanies();
+        fetchPlans();
+    }, []);
 
     const openModal = (company, mode) => {
         setSelectedCompany(company);
@@ -68,6 +72,10 @@ export default function Companies() {
                 setSubscriptionEndsAt('');
             }
             setStatus(company.subscriptionStatus || 'active');
+        }
+
+        if (mode === 'password') {
+            setNewPassword('');
         }
     };
 
@@ -137,8 +145,29 @@ export default function Companies() {
         }
     };
 
+    const handleSavePassword = async () => {
+        if (!newPassword || newPassword.length < 6) {
+            toast.error("Password must be at least 6 characters long.");
+            return;
+        }
+
+        try {
+            await api.patch(`/sa/companies/${selectedCompany._id}/password`, { password: newPassword });
+            toast.success("Company password updated successfully!");
+            closeModal();
+        } catch (err) {
+            toast.error("Failed to update password: " + (err.response?.data?.message || err.message));
+        }
+    };
+
     const handleResetDefaults = async () => {
-        if (!window.confirm("Are you sure? This will remove all custom overrides and revert the company to the Plan's default features.")) return;
+        const ok = await confirm(
+            'Reset to Defaults',
+            "Are you sure? This will remove all custom overrides and revert the company to the Plan's default features.",
+            'Reset',
+            'danger'
+        );
+        if (!ok) return;
         try {
             // Send empty map with replace=true to clear all overrides
             await api.patch(`/sa/companies/${selectedCompany._id}/flags`, {
@@ -155,7 +184,13 @@ export default function Companies() {
     };
 
     const handleDeleteCompany = async (companyId) => {
-        if (!window.confirm("⚠️ DANGER: Are you sure you want to permanently DELETE this company? This action cannot be undone.")) return;
+        const ok = await confirm(
+            'Delete Company',
+            "⚠️ DANGER: Are you sure you want to permanently DELETE this company? This action cannot be undone.",
+            'Delete Permanently',
+            'danger'
+        );
+        if (!ok) return;
 
         try {
             await api.delete(`/sa/companies/${companyId}`);
@@ -240,7 +275,7 @@ export default function Companies() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                            {c.planId?.name || 'Unknown Plan'}
+                                            {c.plan?.name || 'Unknown Plan'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -285,6 +320,13 @@ export default function Companies() {
                                                 <HardDrive size={16} />
                                             </button>
                                             <button
+                                                onClick={() => openModal(c, 'password')}
+                                                className="text-slate-600 hover:text-blue-600 flex items-center gap-1"
+                                                title="Change Password"
+                                            >
+                                                <Lock size={16} />
+                                            </button>
+                                            <button
                                                 onClick={() => openModal(c, 'details')}
                                                 className="text-slate-600 hover:text-blue-600 flex items-center gap-1"
                                                 title="View Details"
@@ -326,6 +368,7 @@ export default function Companies() {
                                     {modalMode === 'details' && 'Company Details'}
                                     {modalMode === 'plan' && 'Manage Plan & Subscription'}
                                     {modalMode === 'features' && 'Manage Module Features'}
+                                    {modalMode === 'password' && 'Change Company Password'}
                                 </h3>
                                 <p className="text-xs text-slate-500 uppercase tracking-widest">{selectedCompany.name}</p>
                             </div>
@@ -469,6 +512,34 @@ export default function Companies() {
                                         >
                                             <Save size={16} /> Save Changes
                                         </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {modalMode === 'password' && (
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg">
+                                        <p className="text-sm text-slate-600 mb-4">
+                                            Enter a new password for the primary admin (OWNER) of this company. They will need to use this new password to log in.
+                                        </p>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                                        <input
+                                            type="text"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Min. 6 characters"
+                                            className="w-full rounded-lg border-slate-300 focus:ring-blue-500 focus:border-blue-500 mb-4"
+                                            autoComplete="off"
+                                        />
+
+                                        <div className="flex justify-end pt-4 border-t border-slate-100">
+                                            <button
+                                                onClick={handleSavePassword}
+                                                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                            >
+                                                <Save size={16} /> Update Password
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Mail, Phone, MoreVertical, Briefcase, UserCheck, Trash2, Edit2, X, Eye } from 'lucide-react';
 import api from '../../services/api';
 import EmployeeDetailsModal from '../../components/employee/EmployeeDetailsModal';
+import { useUI } from '../../context/UIContext';
 
 export default function Employees() {
+    const { confirm, alert } = useUI();
     const [searchTerm, setSearchTerm] = useState('');
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -11,21 +13,22 @@ export default function Employees() {
     const [isEditing, setIsEditing] = useState(false);
     const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
     const [userToView, setUserToView] = useState(null);
-    const [isViewDeleted, setIsViewDeleted] = useState(false); // [NEW]
+    const [isViewDeleted, setIsViewDeleted] = useState(false);
 
     const [employeeForm, setEmployeeForm] = useState({
         firstName: '', lastName: '', email: '', phone: '', password: '',
-        position: '', department: '', salary: '', status: 'Active', category: 'General',
+        salary: '', status: 'Active', category: 'General',
         freeLeavesPerMonth: 1, workingDaysPerWeek: 6
     });
 
     useEffect(() => {
         fetchEmployees();
-    }, [isViewDeleted]); // [NEW] Re-fetch when view mode changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isViewDeleted]);
 
     const fetchEmployees = async () => {
         try {
-            setLoading(true); // Ensure loading state
+            setLoading(true);
             const companyId = localStorage.getItem('companyId');
             const response = await api.get('/employees', { params: { companyId, isDeleted: isViewDeleted } });
             setEmployees(response.data);
@@ -39,7 +42,7 @@ export default function Employees() {
     const resetForm = () => {
         setEmployeeForm({
             firstName: '', lastName: '', email: '', phone: '', password: '',
-            position: '', department: '', salary: '', status: 'Active', category: 'General',
+            salary: '', status: 'Active', category: 'General',
             freeLeavesPerMonth: 1, workingDaysPerWeek: 6
         });
         setIsEditing(false);
@@ -57,9 +60,7 @@ export default function Employees() {
             lastName: emp.lastName,
             email: emp.email,
             phone: emp.phone,
-            password: '', // Leave blank to keep unchanged
-            position: emp.position,
-            department: emp.department || '',
+            password: '',
             salary: emp.salary,
             status: emp.status,
             category: emp.category || 'General',
@@ -67,7 +68,7 @@ export default function Employees() {
             workingDaysPerWeek: emp.workingDaysPerWeek || 6
         });
         setIsEditing(true);
-        setCurrentEmployeeId(emp._id);
+        setCurrentEmployeeId(emp._id || emp.id);
         setShowModal(true);
     };
 
@@ -78,7 +79,7 @@ export default function Employees() {
 
             if (isEditing) {
                 const updates = { ...employeeForm };
-                if (!updates.password) delete updates.password; // Don't send empty password
+                if (!updates.password) delete updates.password;
                 await api.put(`/employees/${currentEmployeeId}`, updates);
             } else {
                 await api.post('/employees', { ...employeeForm, companyId });
@@ -89,31 +90,31 @@ export default function Employees() {
             fetchEmployees();
         } catch (err) {
             console.error(err);
-            alert(err.response?.data?.message || 'Failed to save employee');
+            alert('Error', err.response?.data?.message || 'Failed to save employee', 'error');
         }
     };
 
     const handleDeleteEmployee = async (id) => {
-        if (window.confirm("Are you sure you want to delete this employee?")) {
-            try {
-                await api.delete(`/employees/${id}`);
-                setEmployees(employees.filter(emp => emp._id !== id));
-            } catch (err) {
-                console.error("Failed to delete employee", err);
-                alert("Failed to delete employee");
-            }
+        const ok = await confirm('Delete Employee', "Are you sure you want to delete this employee?", 'Delete');
+        if (!ok) return;
+        try {
+            await api.delete(`/employees/${id}`);
+            setEmployees(employees.filter(emp => (emp._id || emp.id) !== id));
+        } catch (err) {
+            console.error("Failed to delete employee", err);
+            alert("Error", "Failed to delete employee", "error");
         }
     };
 
     const handleRestoreEmployee = async (id) => {
-        if (window.confirm("Restore this employee?")) {
-            try {
-                await api.patch(`/employees/${id}/restore`);
-                fetchEmployees();
-            } catch (err) {
-                console.error("Failed to restore", err);
-                alert(err.response?.data?.message || "Failed to restore employee");
-            }
+        const ok = await confirm('Restore Employee', "Restore this employee?", 'Restore', 'primary');
+        if (!ok) return;
+        try {
+            await api.patch(`/employees/${id}/restore`);
+            fetchEmployees();
+        } catch (err) {
+            console.error("Failed to restore", err);
+            alert("Error", err.response?.data?.message || "Failed to restore employee", "error");
         }
     };
 
@@ -140,7 +141,7 @@ export default function Employees() {
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search by name, email, or role..."
+                        placeholder="Search by name or email..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
@@ -163,10 +164,9 @@ export default function Employees() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {employees.filter(emp =>
                     emp.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    emp.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    emp.position.toLowerCase().includes(searchTerm.toLowerCase())
+                    emp.lastName.toLowerCase().includes(searchTerm.toLowerCase())
                 ).map((employee) => (
-                    <div key={employee._id} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div key={employee._id || employee.id} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex justify-between items-start">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg">
@@ -174,7 +174,6 @@ export default function Employees() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-slate-900">{employee.firstName} {employee.lastName}</h3>
-                                    <p className="text-xs text-slate-500">{employee.position}</p>
                                 </div>
                             </div>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${employee.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
@@ -186,10 +185,6 @@ export default function Employees() {
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                 <Mail size={16} className="text-slate-400" />
                                 {employee.email}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Briefcase size={16} className="text-slate-400" />
-                                {employee.department || 'No Department'}
                             </div>
                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                 <UserCheck size={16} className="text-slate-400" />
@@ -211,7 +206,7 @@ export default function Employees() {
                                 {!isViewDeleted ? (
                                     <>
                                         <button
-                                            onClick={() => handleDeleteEmployee(employee._id)}
+                                            onClick={() => handleDeleteEmployee(employee._id || employee.id)}
                                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
                                             title="Delete Employee"
                                         >
@@ -227,7 +222,7 @@ export default function Employees() {
                                     </>
                                 ) : (
                                     <button
-                                        onClick={() => handleRestoreEmployee(employee._id)}
+                                        onClick={() => handleRestoreEmployee(employee._id || employee.id)}
                                         className="text-xs font-bold text-indigo-600 px-3 py-1 bg-indigo-50 rounded-lg hover:bg-indigo-100"
                                     >
                                         Restore
@@ -300,16 +295,6 @@ export default function Employees() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Position</label>
-                                    <input required className="w-full border border-slate-200 p-2 rounded-lg" value={employeeForm.position} onChange={e => setEmployeeForm({ ...employeeForm, position: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Department</label>
-                                    <input className="w-full border border-slate-200 p-2 rounded-lg" value={employeeForm.department} onChange={e => setEmployeeForm({ ...employeeForm, department: e.target.value })} />
-                                </div>
-                            </div>
 
                             <div>
                                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Annual Salary (₹)</label>

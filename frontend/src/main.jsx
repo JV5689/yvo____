@@ -6,6 +6,8 @@ import './index.css'
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from './context/AuthContext';
+import { UIProvider } from './context/UIContext';
+import GlobalModal from './components/layout/GlobalModal';
 
 
 
@@ -15,9 +17,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <AuthProvider>
-        <Router>
-          <App />
-        </Router>
+        <UIProvider>
+          <Router>
+            <App />
+            <GlobalModal />
+          </Router>
+        </UIProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   </React.StrictMode>

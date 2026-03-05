@@ -1,0 +1,378 @@
+﻿
+> yvo@0.0.0 lint
+> eslint .
+
+
+D:\yvo____\frontend\src\components\ErrorBoundary.jsx
+  9:37  error  'error' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\components\customers\CustomerProfile.jsx
+    1:38  error    'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                      no-unused-vars
+    1:51  error    'useRef' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                           no-unused-vars
+  202:18  error    'e' is defined but never used                                                                                           no-unused-vars
+  212:18  error    'error' is defined but never used                                                                                       no-unused-vars
+  224:8   warning  React Hook useEffect has a missing dependency: 'fetchCustomerLedger'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\yvo____\frontend\src\components\dashboard\ReportsWidget.jsx
+  53:18  error  'e' is defined but never used  no-unused-vars
+  91:18  error  'e' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\components\employee\EmployeeDetailsModal.jsx
+  16:8   warning  React Hook useEffect has a missing dependency: 'fetchEmployeeDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  28:57  error    'index' is defined but never used                                                                                        no-unused-vars
+
+D:\yvo____\frontend\src\components\invoice-builder\InvoiceRenderer.jsx
+  7:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\yvo____\frontend\src\components\invoice-builder\InvoiceViewerModal.jsx
+  54:22  error  'err' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\components\invoice-builder\TemplateDesigner.jsx
+  85:26  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  83 |         // Place new blocks somewhere near the top middle
+  84 |         const newBlock = {
+> 85 |             id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+     |                          ^^^^^^^^^^ Cannot call impure function
+  86 |             type: widgetInfo.type,
+  87 |             config: {
+  88 |                 x: 50,                      react-hooks/purity
+  85:40  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  83 |         // Place new blocks somewhere near the top middle
+  84 |         const newBlock = {
+> 85 |             id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+     |                                        ^^^^^^^^^^^^^ Cannot call impure function
+  86 |             type: widgetInfo.type,
+  87 |             config: {
+  88 |                 x: 50,  react-hooks/purity
+
+D:\yvo____\frontend\src\components\layout\DashboardLayout.jsx
+  334:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  332 |
+  333 |     useEffect(() => {
+> 334 |         if (active) setIsOpen(true);
+      |                     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  335 |     }, [active]);
+  336 |
+  337 |     const handleLockedClick = (e) => {  react-hooks/set-state-in-effect
+
+D:\yvo____\frontend\src\components\layout\GlobalModal.jsx
+  11:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+   9 |     useEffect(() => {
+  10 |         if (modalConfig?.type === 'prompt') {
+> 11 |             setInputValue('');
+     |             ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  12 |         }
+  13 |     }, [modalConfig]);
+  14 |  react-hooks/set-state-in-effect
+
+D:\yvo____\frontend\src\components\layout\Header.jsx
+  56:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  54 |   // Close menu when route changes
+  55 |   useEffect(() => {
+> 56 |     setIsMenuOpen(false);
+     |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  57 |   }, [location]);
+  58 |
+  59 |   const initials = useMemo(() => {  react-hooks/set-state-in-effect
+
+D:\yvo____\frontend\src\context\AuthContext.jsx
+   25:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  23 |         if (token && storedUser) {
+  24 |             const parsedUser = JSON.parse(storedUser);
+> 25 |             setUser(parsedUser);
+     |             ^^^^^^^ Avoid calling setState() directly within an effect
+  26 |
+  27 |             // If employee, refresh profile to get latest company info
+  28 |             if (role === 'employee' || parsedUser.role === 'employee') {  react-hooks/set-state-in-effect
+  119:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-refresh/only-export-components
+
+D:\yvo____\frontend\src\context\UIContext.jsx
+  6:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\yvo____\frontend\src\pages\About.jsx
+  20:23  error  'Icon' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\pages\DashboardHome.jsx
+  19:13  error  'config' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u    no-unused-vars
+  20:11  error  'navigate' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\yvo____\frontend\src\pages\Help.jsx
+  24:30  error  'Icon' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\pages\Home.jsx
+  195:35  error  'index' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\pages\Login.jsx
+   1:17  error  'useMemo' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                       no-unused-vars
+  12:7   error  'isValidEmail' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u         no-unused-vars
+  14:7   error  'normalizePhone' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u       no-unused-vars
+  23:23  error  'setLoginMethod' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u       no-unused-vars
+  32:10  error  'rememberMe' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u           no-unused-vars
+  32:22  error  'setRememberMe' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u        no-unused-vars
+  33:24  error  'setShowPassword' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+  78:9   error  'handleGoogleSuccess' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  78:38  error  'credentialResponse' is defined but never used                                                       no-unused-vars
+
+D:\yvo____\frontend\src\pages\employee\EmployeeCalendar.jsx
+  44:11  error  'scrollLeft' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u   no-unused-vars
+  50:11  error  'scrollRight' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\yvo____\frontend\src\pages\employee\EmployeeLayout.jsx
+  22:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  20 |     // Close sidebar on route change (mobile)
+  21 |     useEffect(() => {
+> 22 |         setIsSidebarOpen(false);
+     |         ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  23 |     }, [location.pathname]);
+  24 |
+  25 |     const handleLogout = () => {  react-hooks/set-state-in-effect
+
+D:\yvo____\frontend\src\pages\employee\EmployeeLeave.jsx
+  44:18  error  'error' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\pages\modules\BackupAndReports.jsx
+   43:8   warning  React Hook useEffect has missing dependencies: 'fetchBackups' and 'fetchConfig'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   49:18  error    'e' is defined but never used                                                                                                        no-unused-vars
+   63:8   warning  React Hook useEffect has a missing dependency: 'fetchBackups'. Either include it or remove the dependency array                      react-hooks/exhaustive-deps
+   70:18  error    'e' is defined but never used                                                                                                        no-unused-vars
+   94:18  error    'error' is defined but never used                                                                                                    no-unused-vars
+  134:18  error    'error' is defined but never used                                                                                                    no-unused-vars
+  185:18  error    'e' is defined but never used                                                                                                        no-unused-vars
+  223:18  error    'e' is defined but never used                                                                                                        no-unused-vars
+
+D:\yvo____\frontend\src\pages\modules\Broadcasts.jsx
+  12:21  error    'setLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        no-unused-vars
+  27:13  error    Error: Cannot access variable before it is declared
+
+`fetchGroups` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  25 |     useEffect(() => {
+  26 |         if (companyId) {
+> 27 |             fetchGroups();
+     |             ^^^^^^^^^^^ `fetchGroups` accessed before it is declared
+  28 |             fetchEmployees();
+  29 |         }
+  30 |     }, [companyId]);
+
+  30 |     }, [companyId]);
+  31 |
+> 32 |     const fetchGroups = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 33 |         try {
+     | ^^^^^^^^^^^^^
+> 34 |             const { data } = await api.get(`/employees/groups?companyId=${companyId}`);
+     | ^^^^^^^^^^^^^
+> 35 |             setGroups(Array.isArray(data) ? data : []);
+     | ^^^^^^^^^^^^^
+> 36 |         } catch (error) {
+     | ^^^^^^^^^^^^^
+> 37 |             console.error("Failed to fetch groups", error);
+     | ^^^^^^^^^^^^^
+> 38 |             toast.error('Failed to load groups');
+     | ^^^^^^^^^^^^^
+> 39 |         }
+     | ^^^^^^^^^^^^^
+> 40 |     };
+     | ^^^^^^^ `fetchGroups` is declared here
+  41 |
+  42 |     const fetchEmployees = async () => {
+  43 |         try {  react-hooks/immutability
+  28:13  error    Error: Cannot access variable before it is declared
+
+`fetchEmployees` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  26 |         if (companyId) {
+  27 |             fetchGroups();
+> 28 |             fetchEmployees();
+     |             ^^^^^^^^^^^^^^ `fetchEmployees` accessed before it is declared
+  29 |         }
+  30 |     }, [companyId]);
+  31 |
+
+  40 |     };
+  41 |
+> 42 |     const fetchEmployees = async () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 43 |         try {
+     | ^^^^^^^^^^^^^
+> 44 |             const { data } = await api.get(`/employees?companyId=${companyId}`);
+     ΓÇª
+     | ^^^^^^^^^^^^^
+> 55 |         }
+     | ^^^^^^^^^^^^^
+> 56 |     };
+     | ^^^^^^^ `fetchEmployees` is declared here
+  57 |
+  58 |     const handleCreateGroup = async (e) => {
+  59 |         e.preventDefault();                                                                                                                                                                                                                                                                                                                  react-hooks/immutability
+  30:8   warning  React Hook useEffect has missing dependencies: 'fetchEmployees' and 'fetchGroups'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+
+D:\yvo____\frontend\src\pages\modules\CalendarModule.jsx
+  10:12  error    'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                         no-unused-vars
+  31:8   warning  React Hook useEffect has a missing dependency: 'fetchEvents'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\yvo____\frontend\src\pages\modules\CompanyTemplates.jsx
+  1:38  error  'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\yvo____\frontend\src\pages\modules\Customers.jsx
+   9:13  error    'config' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                             no-unused-vars
+  15:13  error    'confirm' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+  16:27  error    'setIsViewDeleted' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                   no-unused-vars
+  17:23  error    'setIsEditing' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                       no-unused-vars
+  18:12  error    'currentCustomerId' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                  no-unused-vars
+  18:31  error    'setCurrentCustomerId' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u               no-unused-vars
+  44:18  error    'error' is defined but never used                                                                                  no-unused-vars
+  53:8   warning  React Hook useEffect has a missing dependency: 'fetchCustomers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\yvo____\frontend\src\pages\modules\Employees.jsx
+   8:29  error    'toast' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                              no-unused-vars
+  26:8   warning  React Hook useEffect has a missing dependency: 'fetchEmployees'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\yvo____\frontend\src\pages\modules\Inventory.jsx
+  11:12  error    'error' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                              no-unused-vars
+  31:8   warning  React Hook useEffect has a missing dependency: 'fetchInventory'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\yvo____\frontend\src\pages\modules\InvoiceBuilder.jsx
+    2:10   error    'createPortal' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                no-unused-vars
+   15:20   error    'confirm' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+   68:18   error    'e' is defined but never used                                                                                      no-unused-vars
+  104:27   error    'cleansedItems' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                      no-unused-vars
+  104:73   error    '_id' is defined but never used                                                                                    no-unused-vars
+  104:89   error    '_inv' is defined but never used                                                                                   no-unused-vars
+  104:109  error    '_cf' is defined but never used                                                                                    no-unused-vars
+  104:123  error    '_i' is defined but never used                                                                                     no-unused-vars
+  104:138  error    '_inv2' is defined but never used                                                                                  no-unused-vars
+  113:32   error    'cleanedItems' is not defined                                                                                      no-undef
+  177:8    warning  React Hook useEffect has a missing dependency: 'DEFAULT_LAYOUT'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  302:42   error    'err' is defined but never used                                                                                    no-unused-vars
+  553:46   error    'e' is defined but never used                                                                                      no-unused-vars
+
+D:\yvo____\frontend\src\pages\modules\Invoicing.jsx
+   11:37  error    'toast' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                             no-unused-vars
+   29:8   warning  React Hook useEffect has a missing dependency: 'fetchInvoices'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   35:18  error    'e' is defined but never used                                                                                     no-unused-vars
+  263:18  error    'err' is defined but never used                                                                                   no-unused-vars
+
+D:\yvo____\frontend\src\pages\modules\Leaves.jsx
+  51:18  error  'err' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\pages\modules\Settings.jsx
+  9:20  error  'confirm' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\yvo____\frontend\src\pages\super-admin\Analytics.jsx
+  17:8  warning  React Hook useEffect has a missing dependency: 'fetchStats'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\yvo____\frontend\src\pages\super-admin\Companies.jsx
+  30:9  error  Error: Cannot access variable before it is declared
+
+`fetchCompanies` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  28 |
+  29 |     useEffect(() => {
+> 30 |         fetchCompanies();
+     |         ^^^^^^^^^^^^^^ `fetchCompanies` accessed before it is declared
+  31 |         fetchPlans();
+  32 |     }, []);
+  33 |
+
+  32 |     }, []);
+  33 |
+> 34 |     const fetchCompanies = () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 35 |         setLoading(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |         api.get('/sa/companies')
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 37 |             .then(res => setCompanies(res.data.companies || []))
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 38 |             .catch(err => console.error(err))
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 39 |             .finally(() => setLoading(false));
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 40 |     };
+     | ^^^^^^^ `fetchCompanies` is declared here
+  41 |
+  42 |     const fetchPlans = () => {
+  43 |         api.get('/sa/plans')  react-hooks/immutability
+  31:9  error  Error: Cannot access variable before it is declared
+
+`fetchPlans` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  29 |     useEffect(() => {
+  30 |         fetchCompanies();
+> 31 |         fetchPlans();
+     |         ^^^^^^^^^^ `fetchPlans` accessed before it is declared
+  32 |     }, []);
+  33 |
+  34 |     const fetchCompanies = () => {
+
+  40 |     };
+  41 |
+> 42 |     const fetchPlans = () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 43 |         api.get('/sa/plans')
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |             .then(res => setPlans(res.data || []))
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 45 |             .catch(err => console.error(err));
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 46 |     };
+     | ^^^^^^^ `fetchPlans` is declared here
+  47 |
+  48 |     const openModal = (company, mode) => {
+  49 |         setSelectedCompany(company);                                                                                                                                         react-hooks/immutability
+
+D:\yvo____\frontend\src\pages\super-admin\CreateCompany.jsx
+  38:20  error  'err' is defined but never used  no-unused-vars
+
+D:\yvo____\frontend\src\pages\super-admin\Plans.jsx
+  64:8   warning  React Hook useEffect has a missing dependency: 'fetchPlans'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  89:18  error    'err' is defined but never used                                                                                no-unused-vars
+
+D:\yvo____\frontend\src\pages\super-admin\SyncControl.jsx
+  44:18  error  'err' is defined but never used  no-unused-vars
+  59:18  error  'err' is defined but never used  no-unused-vars
+
+Γ£û 92 problems (79 errors, 13 warnings)
+

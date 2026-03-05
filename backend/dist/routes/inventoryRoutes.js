@@ -1,12 +1,15 @@
 import express from 'express';
 import * as inventoryController from '../controllers/modules/inventoryController.js';
-import { checkSubscriptionStatus } from '../middleware/subscriptionMiddleware.js';
+import { authenticate, authorize } from '../src/middleware/auth.js';
+import { tenantIsolation } from '../src/middleware/tenant.js';
 const router = express.Router();
-// Apply Subscription Check
-router.use(checkSubscriptionStatus);
+router.use(authenticate);
+router.use(tenantIsolation);
 router.get('/', inventoryController.getInventory);
 router.get('/:id', inventoryController.getInventoryItemById);
-router.post('/', inventoryController.createInventoryItem);
-router.patch('/:id', inventoryController.updateInventoryItem);
-router.delete('/:id', inventoryController.deleteInventoryItem);
+router.post('/', authorize('OWNER', 'ADMIN'), inventoryController.createInventoryItem);
+router.patch('/:id', authorize('OWNER', 'ADMIN'), inventoryController.updateInventoryItem);
+router.delete('/:id', authorize('OWNER', 'ADMIN'), inventoryController.deleteInventoryItem);
+router.post('/:id/restore', authorize('OWNER', 'ADMIN'), inventoryController.restoreInventoryItem);
+router.delete('/:id/permanent', authorize('OWNER', 'ADMIN'), inventoryController.deleteItemPermanently);
 export default router;

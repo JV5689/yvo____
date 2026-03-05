@@ -1,106 +1,167 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/Global/User.js';
-import { Company } from '../models/Global/Company.js';
-import { Plan } from '../models/Global/Plan.js';
+import { prisma } from '../src/config/db.js';
+import { hashPassword, verifyPassword } from '../src/security/hashing.js';
+import {
+    generateAccessToken,
+    generateRefreshToken,
+    hashToken,
+    verifyRefreshToken
+} from '../src/security/tokens.js';
+import { AppError } from '../src/middleware/errorHandler.js';
+import { logAudit } from '../src/utils/auditLogger.js';
 
-const generateToken = (id: string) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'dev_secret', {
-        expiresIn: '30d',
+const setTokenCookies = (res: Response, accessToken: string, refreshToken: string) => {
+    res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 };
 
-// POST /auth/register-company
 export const registerCompany = async (req: Request, res: Response) => {
-    try {
-        const { companyName, ownerName, email, password } = req.body;
+    const { companyName, ownerName, email, password } = req.body;
 
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
+    const users: any[] = await prisma.$queryRawUnsafe('SELECT id FROM user WHERE email = ?', email);
+    if (users.length > 0) throw new AppError('User already exists', 400);
 
-        // 1. Get Default Plan (Basic)
-        let plan = await Plan.findOne({ code: 'BASIC' });
-        if (!plan) {
-            // Create fallback plan if not seeding
-            plan = await Plan.create({
-                code: 'BASIC',
-                name: 'Basic',
-                priceMonthly: 0
-            });
-        }
+    let plans: any[] = await prisma.$queryRawUnsafe('SELECT id, defaultFlags FROM plan WHERE code = ?', 'BASIC');
+    let planId;
+    let defaultFlags = {};
 
-        // 2. Create Company
-        // Generate a random API key for the company (simple implementation)
-        const apiKey = `sk_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-
-        const company = await Company.create({
-            name: companyName,
-            planId: plan._id,
-            subscriptionStatus: 'trial',
-            featureFlags: plan.defaultFlags,
-            apiKey
+    if (plans.length === 0) {
+        const newPlan: any = await prisma.plan.create({
+            data: { code: 'BASIC', name: 'Basic', priceMonthly: 0 }
         });
+        planId = newPlan.id;
+        defaultFlags = newPlan.defaultFlags || {};
+    } else {
+        planId = plans[0].id;
+        defaultFlags = plans[0].defaultFlags || {};
+    }
 
-        // 3. Create Owner
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
+    const company: any = await prisma.company.create({
+        data: {
+            name: companyName,
+            planId: planId,
+            subscriptionStatus: 'trial',
+            featureFlags: defaultFlags as any,
+            apiKey: `sk_live_${crypto.randomUUID()}`
+        }
+    });
 
-        const user = await User.create({
+    const newUser: any = await prisma.user.create({
+        data: {
             fullName: ownerName,
             email,
-            passwordHash,
-            memberships: [{
-                companyId: company._id,
-                role: 'OWNER'
-            }],
-            isSuperAdmin: false
-        });
+            passwordHash: await hashPassword(password),
+            isSuperAdmin: false,
+        }
+    });
 
-        res.status(201).json({
-            _id: user._id,
-            fullName: user.fullName,
-            email: user.email,
-            token: generateToken((user._id as any).toString()),
-            companyId: company._id
-        });
+    await prisma.$executeRawUnsafe(
+        'INSERT INTO usermembership (id, userId, companyId, role, joinedAt) VALUES (?, ?, ?, ?, ?)',
+        crypto.randomUUID(), newUser.id, company.id, 'OWNER', new Date()
+    );
 
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
-    }
+    const payload = { userId: newUser.id, companyId: company.id, role: 'OWNER', isSuperAdmin: false };
+    const accessToken = generateAccessToken(payload);
+    const { token: refreshToken, hashedToken } = generateRefreshToken(payload);
+
+    await prisma.$executeRawUnsafe('UPDATE user SET hashedRefreshToken = ? WHERE id = ?', hashedToken, newUser.id);
+    setTokenCookies(res, accessToken, refreshToken);
+
+    await logAudit({
+        actorId: newUser.id,
+        companyId: company.id,
+        action: 'REGISTER_COMPANY',
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+    });
+
+    res.status(201).json({
+        status: 'success',
+        token: accessToken,
+        companyId: company.id,
+        id: newUser.id,
+        fullName: newUser.fullName,
+        email: newUser.email,
+    });
 };
 
-// POST /auth/login
 export const login = async (req: Request, res: Response) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email }).populate('memberships.companyId');
+    const { email, password } = req.body;
 
-        if (user && user.passwordHash && (await bcrypt.compare(password, user.passwordHash))) {
-            // Update last login
-            user.lastLoginAt = new Date();
-            await user.save();
+    const users: any[] = await prisma.$queryRawUnsafe('SELECT * FROM user WHERE email = ?', email);
+    const user = users[0];
 
-            // Determine default company context (first membership)
-            const primaryCompany = user.memberships.length > 0 ? user.memberships[0].companyId : null;
-
-            console.log("Login User:", user.email, "Primary Company:", primaryCompany);
-
-            res.json({
-                _id: user._id,
-                fullName: user.fullName,
-                email: user.email,
-                isSuperAdmin: user.isSuperAdmin,
-                memberships: user.memberships,
-                currentCompanyId: primaryCompany?._id, // Client can switch if multiple
-                token: generateToken((user._id as any).toString()),
-            });
-        } else {
-            res.status(401).json({ message: 'Invalid email or password' });
-        }
-    } catch (error: any) {
-        res.status(500).json({ message: error.message });
+    if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+        await logAudit({ actorId: 'anonymous', action: 'FAILED_LOGIN', details: { email }, ip: req.ip, userAgent: req.headers['user-agent'] });
+        throw new AppError('Invalid email or password', 401);
     }
+
+    const memberships: any[] = await prisma.$queryRawUnsafe('SELECT * FROM usermembership WHERE userId = ?', user.id);
+    const primaryMembership = memberships[0];
+    const companyId = primaryMembership?.companyId;
+    const role = primaryMembership?.role || 'USER';
+
+    const payload = { userId: user.id, companyId, role, isSuperAdmin: !!user.isSuperAdmin };
+    const accessToken = generateAccessToken(payload);
+    const { token: refreshToken, hashedToken } = generateRefreshToken(payload);
+
+    await prisma.$executeRawUnsafe(
+        'UPDATE user SET hashedRefreshToken = ?, lastLoginAt = ?, lastIp = ?, lastUserAgent = ? WHERE id = ?',
+        hashedToken, new Date(), req.ip, req.headers['user-agent'], user.id
+    );
+
+    setTokenCookies(res, accessToken, refreshToken);
+
+    await logAudit({ actorId: user.id, companyId, action: 'LOGIN', ip: req.ip, userAgent: req.headers['user-agent'] });
+
+    res.json({
+        status: 'success',
+        token: accessToken,
+        currentCompanyId: companyId,
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        isSuperAdmin: !!user.isSuperAdmin,
+        role,
+    });
+};
+
+export const refresh = async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) throw new AppError('Refresh token missing', 401);
+
+    const decoded = verifyRefreshToken(refreshToken);
+    const users: any[] = await prisma.$queryRawUnsafe('SELECT id, hashedRefreshToken FROM user WHERE id = ?', decoded.userId);
+    const user = users[0];
+
+    if (!user || user.hashedRefreshToken !== hashToken(refreshToken)) {
+        throw new AppError('Invalid refresh token', 401);
+    }
+
+    const accessToken = generateAccessToken(decoded);
+    const { token: newRefreshToken, hashedToken } = generateRefreshToken(decoded);
+
+    await prisma.$executeRawUnsafe('UPDATE user SET hashedRefreshToken = ? WHERE id = ?', hashedToken, user.id);
+    setTokenCookies(res, accessToken, newRefreshToken);
+
+    res.json({ status: 'success', token: accessToken });
+};
+
+export const logout = async (req: Request, res: Response) => {
+    const userId = (req as any).user?.userId;
+    if (userId) await prisma.$executeRawUnsafe('UPDATE user SET hashedRefreshToken = NULL WHERE id = ?', userId);
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+    res.json({ status: 'success' });
 };

@@ -9,5 +9,6 @@ const router = express.Router();
 router.get('/config', configController.getConfig);
 router.patch('/:id', configController.updateCompany);
 router.post('/verify-password', configController.verifyPassword); // Security check
+router.post('/invoice-attributes', configController.addInvoiceAttribute);
 
 export default router;
