@@ -35,7 +35,7 @@ export default function CreateCompany() {
                     setFormData(prev => ({ ...prev, planId: activePlans[0]._id }));
                 }
             })
-            .catch(err => toast.error("Failed to load plans"));
+            .catch(() => toast.error("Failed to load plans"));
     }, []);
 
     const handleChange = (e) => {

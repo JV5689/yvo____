@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, Users, Package, DollarSign } from 'lucide-react';
+import { TrendingUp, Users, Package, IndianRupee } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import SuperAdminAnalytics from '../super-admin/Analytics';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 export default function Analytics() {
+    const { user } = useAuth();
+
+    if (user?.isSuperAdmin) {
+        return <SuperAdminAnalytics />;
+    }
+
+    return <TenantAnalytics />;
+}
+
+function TenantAnalytics() {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -26,7 +38,8 @@ export default function Analytics() {
     }, []);
 
     if (loading) return <div className="p-10 text-center">Loading analytics...</div>;
-    if (!stats) return <div className="p-10 text-center text-slate-500">No data available</div>;
+    // Handle case where fetch failed or stats is null
+    if (!stats) return <div className="p-10 text-center text-slate-500">No data available or failed to load.</div>;
 
     const mockMonthlyData = [
         { name: 'Jan', revenue: 4000, expenses: 2400 },
@@ -38,8 +51,8 @@ export default function Analytics() {
     ];
 
     const inventoryData = [
-        { name: 'In Stock', value: stats.inventory.totalItems - stats.inventory.lowStock },
-        { name: 'Low Stock', value: stats.inventory.lowStock },
+        { name: 'In Stock', value: stats.inventory?.totalItems || 0 }, // Safe access
+        { name: 'Low Stock', value: stats.inventory?.lowStock || 0 },
     ];
 
     return (
@@ -54,16 +67,16 @@ export default function Analytics() {
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Total Employees</p>
-                        <h3 className="text-2xl font-bold text-slate-800">{stats.employees.total}</h3>
+                        <h3 className="text-2xl font-bold text-slate-800">{stats.employees?.total || 0}</h3>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-                        <DollarSign size={24} />
+                        <IndianRupee size={24} />
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Total Expenses</p>
-                        <h3 className="text-2xl font-bold text-slate-800">${stats.finance.totalExpenses}</h3>
+                        <h3 className="text-2xl font-bold text-slate-800">₹{stats.finance?.totalExpenses || 0}</h3>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -72,7 +85,7 @@ export default function Analytics() {
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Inventory Items</p>
-                        <h3 className="text-2xl font-bold text-slate-800">{stats.inventory.totalItems}</h3>
+                        <h3 className="text-2xl font-bold text-slate-800">{stats.inventory?.totalItems || 0}</h3>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -81,7 +94,7 @@ export default function Analytics() {
                     </div>
                     <div>
                         <p className="text-sm text-slate-500">Customer Satisfaction</p>
-                        <h3 className="text-2xl font-bold text-slate-800">{stats.performance.customerSatisfaction}/10</h3>
+                        <h3 className="text-2xl font-bold text-slate-800">{stats.performance?.customerSatisfaction || 0}/10</h3>
                     </div>
                 </div>
             </div>

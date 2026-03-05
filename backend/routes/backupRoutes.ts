@@ -1,0 +1,17 @@
+import express from 'express';
+import * as backupController from '../controllers/backupController.js';
+import { authenticate, authorize } from '../src/middleware/auth.js';
+import { tenantIsolation } from '../src/middleware/tenant.js';
+
+const router = express.Router();
+
+router.use(authenticate);
+router.use(tenantIsolation);
+
+router.post('/', authorize('OWNER', 'ADMIN'), backupController.createBackup);
+router.get('/', authorize('OWNER', 'ADMIN'), backupController.getBackups);
+router.get('/:id', authorize('OWNER', 'ADMIN'), backupController.getBackupStatus);
+router.get('/:id/download', authorize('OWNER', 'ADMIN'), backupController.downloadBackup);
+router.delete('/:id', authorize('OWNER', 'ADMIN'), backupController.deleteBackup);
+
+export default router;

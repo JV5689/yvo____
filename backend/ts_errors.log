@@ -1,0 +1,237 @@
+﻿controllers/employeeFeatureController.ts(12,28): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(12,37): error TS2339: Property 'id' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }'.
+controllers/employeeFeatureController.ts(23,28): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(23,37): error TS2339: Property 'id' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }'.
+controllers/employeeFeatureController.ts(33,28): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(33,37): error TS2339: Property 'id' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }'.
+controllers/employeeFeatureController.ts(34,27): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(57,28): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(57,37): error TS2339: Property 'id' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }'.
+controllers/employeeFeatureController.ts(58,27): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(62,28): error TS18047: 'employee' is possibly 'null'.
+controllers/employeeFeatureController.ts(69,30): error TS18047: 'employee' is possibly 'null'.
+controllers/employeeFeatureController.ts(83,28): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(83,37): error TS2339: Property 'id' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }'.
+controllers/employeeFeatureController.ts(84,27): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(117,28): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(117,37): error TS2339: Property 'id' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; }'.
+controllers/employeeFeatureController.ts(118,27): error TS18048: 'req.user' is possibly 'undefined'.
+controllers/employeeFeatureController.ts(127,78): error TS2339: Property 'default' does not exist on type 'typeof import("D:/yvo____/backend/models/Modules/WorkReport", { with: { "resolution-mode": "import" } })'.
+controllers/invoiceTemplateController.ts(15,47): error TS2353: Object literal may only specify known properties, and 'companyId' does not exist in type '{ type: string; }'.
+controllers/modules/analyticsController.ts(23,94): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number | ObjectId | Uint8Array<ArrayBufferLike> | ObjectIdLike | undefined'.
+      Type 'ParsedQs' is not assignable to type 'string | number | ObjectId | Uint8Array<ArrayBufferLike> | ObjectIdLike | undefined'.
+        Type 'ParsedQs' is missing the following properties from type 'Uint8Array<ArrayBufferLike>': BYTES_PER_ELEMENT, buffer, byteLength, byteOffset, and 27 more.
+controllers/modules/calendarController.ts(12,19): error TS2339: Property 'start' does not exist on type '{ companyId: string | ParsedQs | (string | ParsedQs)[]; isDeleted: boolean; }'.
+controllers/modules/calendarController.ts(12,44): error TS2769: No overload matches this call.
+  Overload 1 of 5, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number | Date'.
+      Type 'ParsedQs' is not assignable to type 'string | number | Date'.
+        Type 'ParsedQs' is missing the following properties from type 'Date': toDateString, toTimeString, toLocaleDateString, toLocaleTimeString, and 38 more.
+  Overload 2 of 5, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'VarDate'.
+      Type 'string' is not assignable to type 'VarDate'.
+  Overload 3 of 5, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number'.
+      Type 'ParsedQs' is not assignable to type 'string | number'.
+controllers/modules/calendarController.ts(12,67): error TS2769: No overload matches this call.
+  Overload 1 of 5, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number | Date'.
+      Type 'ParsedQs' is not assignable to type 'string | number | Date'.
+        Type 'ParsedQs' is missing the following properties from type 'Date': toDateString, toTimeString, toLocaleDateString, toLocaleTimeString, and 38 more.
+  Overload 2 of 5, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'VarDate'.
+      Type 'string' is not assignable to type 'VarDate'.
+  Overload 3 of 5, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number'.
+      Type 'ParsedQs' is not assignable to type 'string | number'.
+controllers/modules/employeeController.ts(21,31): error TS2339: Property 'employeeId' does not exist on type '{ companyId: string | ParsedQs | (string | ParsedQs)[]; }'.
+controllers/modules/employeeController.ts(141,20): error TS2339: Property 'isDeleted' does not exist on type '{ companyId: string | ParsedQs | (string | ParsedQs)[]; }'.
+controllers/modules/employeeController.ts(143,20): error TS2339: Property 'isDeleted' does not exist on type '{ companyId: string | ParsedQs | (string | ParsedQs)[]; }'.
+controllers/modules/employeeController.ts(391,36): error TS2345: Argument of type 'string | ParsedQs | (string | ParsedQs)[] | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+controllers/modules/employeeController.ts(391,42): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+controllers/modules/employeeController.ts(391,42): error TS18048: 'month' is possibly 'undefined'.
+controllers/modules/employeeController.ts(392,34): error TS2345: Argument of type 'string | ParsedQs | (string | ParsedQs)[] | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+controllers/modules/employeeController.ts(405,45): error TS2345: Argument of type 'Date' is not assignable to parameter of type 'number'.
+controllers/modules/employeeController.ts(406,43): error TS2345: Argument of type 'Date' is not assignable to parameter of type 'number'.
+controllers/modules/employeeController.ts(407,39): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+controllers/modules/employeeController.ts(407,45): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+controllers/modules/employeeController.ts(452,31): error TS2339: Property 'employeeId' does not exist on type '{ companyId: string | ParsedQs | (string | ParsedQs)[]; }'.
+controllers/modules/expenseController.ts(12,19): error TS2339: Property 'date' does not exist on type '{ companyId: string | ParsedQs | (string | ParsedQs)[]; isDeleted: boolean; }'.
+controllers/modules/expenseController.ts(12,43): error TS2769: No overload matches this call.
+  Overload 1 of 5, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number | Date'.
+      Type 'ParsedQs' is not assignable to type 'string | number | Date'.
+        Type 'ParsedQs' is missing the following properties from type 'Date': toDateString, toTimeString, toLocaleDateString, toLocaleTimeString, and 38 more.
+  Overload 2 of 5, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'VarDate'.
+      Type 'string' is not assignable to type 'VarDate'.
+  Overload 3 of 5, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number'.
+      Type 'ParsedQs' is not assignable to type 'string | number'.
+controllers/modules/expenseController.ts(12,66): error TS2769: No overload matches this call.
+  Overload 1 of 5, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number | Date'.
+      Type 'ParsedQs' is not assignable to type 'string | number | Date'.
+        Type 'ParsedQs' is missing the following properties from type 'Date': toDateString, toTimeString, toLocaleDateString, toLocaleTimeString, and 38 more.
+  Overload 2 of 5, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'VarDate'.
+      Type 'string' is not assignable to type 'VarDate'.
+  Overload 3 of 5, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number'.
+      Type 'ParsedQs' is not assignable to type 'string | number'.
+controllers/modules/invoiceController.ts(51,40): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+controllers/modules/invoiceController.ts(51,45): error TS7006: Parameter 'item' implicitly has an 'any' type.
+controllers/modules/invoiceController.ts(123,52): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+controllers/modules/invoiceController.ts(123,57): error TS7006: Parameter 'item' implicitly has an 'any' type.
+controllers/sa/analyticsController.ts(11,37): error TS2345: Argument of type 'string | ParsedQs | (string | ParsedQs)[] | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+controllers/sa/analyticsController.ts(65,58): error TS2345: Argument of type 'string | ParsedQs | (string | ParsedQs)[] | 30' is not assignable to parameter of type 'string'.
+  Type 'ParsedQs' is not assignable to type 'string'.
+controllers/sa/analyticsController.ts(74,29): error TS2339: Property 'name' does not exist on type 'ObjectId'.
+controllers/sa/analyticsController.ts(93,22): error TS2339: Property 'userId' does not exist on type 'Document<unknown, {}, ICompany, {}, {}> & ICompany & Required<{ _id: ObjectId; }> & { __v: number; }'.
+controllers/sa/analyticsController.ts(94,29): error TS2339: Property 'name' does not exist on type 'ObjectId'.
+controllers/sa/companiesController.ts(57,27): error TS2339: Property 'subscriptionStatus' does not exist on type '{}'.
+controllers/sa/companiesController.ts(59,19): error TS2339: Property 'name' does not exist on type '{}'.
+controllers/sa/companiesController.ts(64,20): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+controllers/sa/companiesController.ts(64,32): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+controllers/sa/companiesController.ts(73,38): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+controllers/sa/companiesController.ts(173,24): error TS2551: Property 'subscriptionEndsAt' does not exist on type '{ subscriptionStatus: any; }'. Did you mean 'subscriptionStatus'?
+controllers/sa/companiesController.ts(231,51): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'boolean'.
+controllers/sa/companiesController.ts(234,42): error TS2698: Spread types may only be created from object types.
+controllers/sa/companiesController.ts(299,30): error TS2349: This expression is not callable.
+  Each member of the union type '{ (filter?: ObjectId | Query<any, any, {}, unknown, "find", Record<string, never>> | FilterQuery<IInvoice> | undefined, options?: (DeleteOptions & ... 1 more ... & { ...; }) | null | undefined): Query<...>; (filter: ObjectId | ... 1 more ... | FilterQuery<...>): Query<...>; } | ... 10 more ... | { ...; }' has signatures, but none of those signatures are compatible with each other.
+controllers/sa/companiesController.ts(301,26): error TS2349: This expression is not callable.
+  Each member of the union type '{ (filter?: ObjectId | Query<any, any, {}, unknown, "find", Record<string, never>> | FilterQuery<IInvoice> | undefined, options?: (DeleteOptions & ... 1 more ... & { ...; }) | null | undefined): Query<...>; (filter: ObjectId | ... 1 more ... | FilterQuery<...>): Query<...>; } | ... 10 more ... | { ...; }' has signatures, but none of those signatures are compatible with each other.
+controllers/sa/plansController.ts(52,44): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'boolean'.
+controllers/sa/plansController.ts(64,28): error TS18047: 'verifyPlan' is possibly 'null'.
+controllers/sa/plansController.ts(64,88): error TS18047: 'verifyPlan' is possibly 'null'.
+controllers/sa/plansController.ts(64,115): error TS18047: 'verifyPlan' is possibly 'null'.
+controllers/sa/syncController.ts(29,39): error TS2339: Property 'flags' does not exist on type 'Document<unknown, {}, IFeatureFlag, {}, {}> & IFeatureFlag & Required<{ _id: ObjectId; }> & { __v: number; }'.
+controllers/sa/syncController.ts(38,28): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+controllers/sa/syncController.ts(76,17): error TS2339: Property 'id' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined'.
+controllers/sa/syncController.ts(112,30): error TS2339: Property 'flags' does not exist on type 'Document<unknown, {}, IFeatureFlag, {}, {}> & IFeatureFlag & Required<{ _id: ObjectId; }> & { __v: number; }'.
+controllers/syncController.ts(51,19): error TS2339: Property 'lastModifiedAt' does not exist on type '{ companyId: string | string[] | undefined; }'.
+controllers/syncController.ts(51,52): error TS2769: No overload matches this call.
+  Overload 1 of 5, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number | Date'.
+      Type 'ParsedQs' is not assignable to type 'string | number | Date'.
+        Type 'ParsedQs' is missing the following properties from type 'Date': toDateString, toTimeString, toLocaleDateString, toLocaleTimeString, and 38 more.
+  Overload 2 of 5, '(vd: VarDate): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'VarDate'.
+      Type 'string' is not assignable to type 'VarDate'.
+  Overload 3 of 5, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | ParsedQs | (string | ParsedQs)[]' is not assignable to parameter of type 'string | number'.
+      Type 'ParsedQs' is not assignable to type 'string | number'.
+routes/paymentRoutes.ts(124,34): error TS2345: Argument of type 'ObjectId' is not assignable to parameter of type 'string'.
+scripts/test_api.ts(79,41): error TS18046: 'error' is of type 'unknown'.
+scripts/test_api.ts(79,58): error TS18046: 'error' is of type 'unknown'.
+scripts/test_api.ts(79,80): error TS18046: 'error' is of type 'unknown'.
+services/backupService.ts(3,22): error TS7016: Could not find a declaration file for module 'archiver'. 'D:/yvo____/backend/node_modules/archiver/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/archiver` if it exists or add a new declaration (.d.ts) file containing `declare module 'archiver';`
+services/backupService.ts(44,7): error TS7023: 'formatValueForHuman' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+services/backupService.ts(44,30): error TS7006: Parameter 'key' implicitly has an 'any' type.
+services/backupService.ts(44,35): error TS7006: Parameter 'value' implicitly has an 'any' type.
+services/backupService.ts(82,26): error TS7024: Function implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+services/backupService.ts(86,27): error TS7022: 'desc' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+services/backupService.ts(101,38): error TS7006: Parameter 'jobId' implicitly has an 'any' type.
+services/backupService.ts(144,36): error TS7006: Parameter 'err' implicitly has an 'any' type.
+services/backupService.ts(155,28): error TS2339: Property 'createdAt' does not exist on type 'Document<unknown, {}, IBackupJob, {}, {}> & IBackupJob & Required<{ _id: ObjectId; }> & { __v: number; }'.
+services/backupService.ts(157,30): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(158,28): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(159,26): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(174,30): error TS2339: Property 'createdAt' does not exist on type 'Document<unknown, {}, IBackupJob, {}, {}> & IBackupJob & Required<{ _id: ObjectId; }> & { __v: number; }'.
+services/backupService.ts(180,33): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(180,56): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(181,15): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(188,27): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ users: Model<IUser, {}, {}, {}, Document<unknown, {}, IUser, {}, {}> & IUser & Required<{ _id: ObjectId; }> & { __v: number; }, any>; ... 10 more ...; broadcast_messages: Model<...>; }'.
+  No index signature with a parameter of type 'string' was found on type '{ users: Model<IUser, {}, {}, {}, Document<unknown, {}, IUser, {}, {}> & IUser & Required<{ _id: ObjectId; }> & { __v: number; }, any>; ... 10 more ...; broadcast_messages: Model<...>; }'.
+services/backupService.ts(201,17): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(201,49): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(203,17): error TS2740: Type '{}' is missing the following properties from type 'ObjectId': _bsontype, id, toHexString, toJSON, and 4 more.
+services/backupService.ts(204,21): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(204,67): error TS2339: Property '$gte' does not exist on type 'ObjectId'.
+services/backupService.ts(204,83): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(205,21): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(205,65): error TS2339: Property '$lte' does not exist on type 'ObjectId'.
+services/backupService.ts(205,81): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(238,22): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(256,25): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+services/backupService.ts(279,13): error TS18048: 'job.filters' is possibly 'undefined'.
+services/backupService.ts(280,19): error TS7034: Variable 'filesIndex' implicitly has type 'any[]' in some locations where its type cannot be determined.
+services/backupService.ts(281,43): error TS7005: Variable 'filesIndex' implicitly has an 'any[]' type.
+services/backupService.ts(303,32): error TS7006: Parameter 'module' implicitly has an 'any' type.
+services/backupService.ts(311,12): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ expenses: string; invoices: string; leaves: string; payroll: string; work_reports: string; }'.
+services/backupService.ts(314,18): error TS7006: Parameter 'value' implicitly has an 'any' type.
+services/backupService.ts(314,25): error TS7006: Parameter 'field' implicitly has an 'any' type.
+src/routes/auth.ts(14,25): error TS7006: Parameter 'email' implicitly has an 'any' type.
+src/routes/auth.ts(15,25): error TS7006: Parameter 'phone' implicitly has an 'any' type.
+src/routes/auth.ts(24,29): error TS7006: Parameter 'companyId' implicitly has an 'any' type.
+src/routes/billing.ts(28,33): error TS7006: Parameter 'billingCycle' implicitly has an 'any' type.
+src/routes/billing.ts(42,39): error TS7031: Binding element 'companyId' implicitly has an 'any' type.
+src/routes/billing.ts(42,50): error TS7031: Binding element 'plan' implicitly has an 'any' type.
+src/routes/billing.ts(63,34): error TS7031: Binding element 'user' implicitly has an 'any' type.
+src/routes/billing.ts(63,40): error TS7031: Binding element 'plan' implicitly has an 'any' type.
+src/routes/billing.ts(78,38): error TS7031: Binding element 'plan' implicitly has an 'any' type.
+src/routes/billing.ts(78,44): error TS7031: Binding element 'user' implicitly has an 'any' type.
+src/routes/billing.ts(78,50): error TS7031: Binding element 'companyId' implicitly has an 'any' type.
+src/routes/billing.ts(78,61): error TS7031: Binding element 'successUrl' implicitly has an 'any' type.
+src/routes/billing.ts(78,73): error TS7031: Binding element 'cancelUrl' implicitly has an 'any' type.
+src/routes/billing.ts(113,34): error TS7031: Binding element 'payload' implicitly has an 'any' type.
+src/routes/billing.ts(113,43): error TS7031: Binding element 'signatureHeader' implicitly has an 'any' type.
+src/routes/billing.ts(119,55): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/routes/billing.ts(119,60): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/billing.ts(160,38): error TS18048: 'req.user' is possibly 'undefined'.
+src/routes/company.ts(16,13): error TS2339: Property 'companyId' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined'.
+src/routes/company.ts(16,24): error TS2339: Property 'role' does not exist on type '{ userId: string; role?: string | undefined; companyId?: string | undefined; email?: string | undefined; } | undefined'.
+src/storage/memoryStore.ts(3,7): error TS7034: Variable 'users' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/storage/memoryStore.ts(4,7): error TS7034: Variable 'otps' implicitly has type 'any[]' in some locations where its type cannot be determined.
+src/storage/memoryStore.ts(8,20): error TS7006: Parameter 'otp' implicitly has an 'any' type.
+src/storage/memoryStore.ts(10,39): error TS7006: Parameter 'email' implicitly has an 'any' type.
+src/storage/memoryStore.ts(11,3): error TS7005: Variable 'users' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(13,39): error TS7006: Parameter 'phone' implicitly has an 'any' type.
+src/storage/memoryStore.ts(14,3): error TS7005: Variable 'users' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(16,42): error TS7006: Parameter 'googleId' implicitly has an 'any' type.
+src/storage/memoryStore.ts(17,3): error TS7005: Variable 'users' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(19,36): error TS7031: Binding element 'email' implicitly has an 'any' type.
+src/storage/memoryStore.ts(19,43): error TS7031: Binding element 'phone' implicitly has an 'any' type.
+src/storage/memoryStore.ts(19,50): error TS7031: Binding element 'name' implicitly has an 'any' type.
+src/storage/memoryStore.ts(19,56): error TS7031: Binding element 'passwordHash' implicitly has an 'any' type.
+src/storage/memoryStore.ts(19,70): error TS7031: Binding element 'googleId' implicitly has an 'any' type.
+src/storage/memoryStore.ts(19,80): error TS7031: Binding element 'businessType' implicitly has an 'any' type.
+src/storage/memoryStore.ts(34,34): error TS7006: Parameter 'user' implicitly has an 'any' type.
+src/storage/memoryStore.ts(34,40): error TS7006: Parameter 'updates' implicitly has an 'any' type.
+src/storage/memoryStore.ts(39,48): error TS7031: Binding element 'identifier' implicitly has an 'any' type.
+src/storage/memoryStore.ts(39,60): error TS7031: Binding element 'channel' implicitly has an 'any' type.
+src/storage/memoryStore.ts(41,9): error TS7005: Variable 'otps' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(41,50): error TS7005: Variable 'otps' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(42,7): error TS7005: Variable 'otps' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(47,35): error TS7031: Binding element 'identifier' implicitly has an 'any' type.
+src/storage/memoryStore.ts(47,47): error TS7031: Binding element 'channel' implicitly has an 'any' type.
+src/storage/memoryStore.ts(47,56): error TS7031: Binding element 'otpHash' implicitly has an 'any' type.
+src/storage/memoryStore.ts(47,65): error TS7031: Binding element 'expiresAt' implicitly has an 'any' type.
+src/storage/memoryStore.ts(61,33): error TS7031: Binding element 'identifier' implicitly has an 'any' type.
+src/storage/memoryStore.ts(61,45): error TS7031: Binding element 'channel' implicitly has an 'any' type.
+src/storage/memoryStore.ts(62,15): error TS7005: Variable 'otps' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(73,33): error TS7006: Parameter 'otp' implicitly has an 'any' type.
+src/storage/memoryStore.ts(73,38): error TS7006: Parameter 'updates' implicitly has an 'any' type.
+src/storage/memoryStore.ts(78,37): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/storage/memoryStore.ts(79,17): error TS7005: Variable 'otps' implicitly has an 'any[]' type.
+src/storage/memoryStore.ts(81,5): error TS7005: Variable 'otps' implicitly has an 'any[]' type.
+src/utils/jwt.ts(9,29): error TS7006: Parameter 'token' implicitly has an 'any' type.
+src/utils/mailer.ts(20,38): error TS7031: Binding element 'to' implicitly has an 'any' type.
+src/utils/mailer.ts(20,42): error TS7031: Binding element 'otp' implicitly has an 'any' type.
+src/utils/mailer.ts(32,42): error TS7031: Binding element 'to' implicitly has an 'any' type.
+src/utils/mailer.ts(32,46): error TS7031: Binding element 'name' implicitly has an 'any' type.
+src/utils/mailer.ts(45,46): error TS7031: Binding element 'adminEmail' implicitly has an 'any' type.
+src/utils/mailer.ts(45,58): error TS7031: Binding element 'customer' implicitly has an 'any' type.
+src/utils/mailer.ts(45,68): error TS7031: Binding element 'plan' implicitly has an 'any' type.
+src/utils/otp.ts(1,20): error TS7016: Could not find a declaration file for module 'bcrypt'. 'D:/yvo____/backend/node_modules/bcrypt/bcrypt.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/bcrypt` if it exists or add a new declaration (.d.ts) file containing `declare module 'bcrypt';`
+src/utils/otp.ts(12,31): error TS7006: Parameter 'otp' implicitly has an 'any' type.
+src/utils/otp.ts(14,33): error TS7006: Parameter 'otp' implicitly has an 'any' type.
+src/utils/otp.ts(14,38): error TS7006: Parameter 'hash' implicitly has an 'any' type.

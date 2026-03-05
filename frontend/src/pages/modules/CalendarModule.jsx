@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Clock, Video, List, Trash2, X, Check } from 'lucide-react';
 import api from '../../services/api';
+import { useUI } from '../../context/UIContext';
 
 export default function CalendarModule() {
+    const { alert, confirm, toast } = useUI();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
     // State for creating/editing
@@ -26,6 +27,7 @@ export default function CalendarModule() {
 
     useEffect(() => {
         fetchEvents();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDate]);
 
     const fetchEvents = async () => {
@@ -44,8 +46,6 @@ export default function CalendarModule() {
             setEvents(response.data);
         } catch (err) {
             console.error("Failed to fetch events", err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -92,14 +92,27 @@ export default function CalendarModule() {
             targetCategories: event.targetCategories || []
         });
         setIsEditing(true);
-        setCurrentEventId(event._id);
+        setCurrentEventId(event._id || event.id);
         setShowModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowModal(false);
+        resetForm();
     };
 
     const handleSaveEvent = async (e) => {
         e.preventDefault();
         try {
-            const companyId = localStorage.getItem('companyId');
+            let companyId = localStorage.getItem('companyId');
+
+            // Fix for stale "undefined"/"null" strings in storage
+            if (companyId === 'undefined' || companyId === 'null' || !companyId) {
+                console.error('Session error: Company ID is missing or invalid.');
+                alert('Session Error', 'Your session might have expired. Please log out and log back in.', 'error');
+                return;
+            }
+
             const payload = { ...eventForm, companyId };
 
             if (isEditing) {
@@ -108,25 +121,26 @@ export default function CalendarModule() {
                 await api.post('/calendar', payload);
             }
 
-            setShowModal(false);
-            resetForm();
+            toast.success(isEditing ? 'Event updated successfully' : 'Event created successfully');
             fetchEvents();
+            handleCloseModal();
         } catch (err) {
             console.error(err);
-            alert('Failed to save event');
+            alert('Error', 'Failed to save event', 'error');
         }
     };
 
     const handleDeleteEvent = async () => {
-        if (!window.confirm("Are you sure you want to delete this event?")) return;
+        const ok = await confirm('Delete Event', "Are you sure you want to delete this event?", 'Delete');
+        if (!ok) return;
         try {
             await api.delete(`/calendar/${currentEventId}`);
-            setShowModal(false);
-            resetForm();
+            toast.success('Event deleted successfully');
             fetchEvents();
+            handleCloseModal();
         } catch (err) {
             console.error(err);
-            alert('Failed to delete event');
+            alert('Error', 'Failed to delete event', 'error');
         }
     };
 
@@ -174,7 +188,7 @@ export default function CalendarModule() {
                     <div className="mt-1 space-y-1 overflow-y-auto max-h-20 custom-scrollbar">
                         {dayEvents.map(ev => (
                             <button
-                                key={ev._id}
+                                key={ev._id || ev.id}
                                 onClick={(e) => { e.stopPropagation(); handleOpenEditModal(ev); }}
                                 className={`w-full text-left text-xs p-1 rounded border overflow-hidden truncate transition-all hover:scale-[1.02] ${ev.type === 'Meeting' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                     ev.type === 'Task' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-amber-100 text-amber-800 border-amber-200'

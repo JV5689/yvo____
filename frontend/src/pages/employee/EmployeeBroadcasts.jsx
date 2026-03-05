@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { MessageSquare, User } from 'lucide-react';
+import { Megaphone, MessageSquare } from 'lucide-react';
 
 export default function EmployeeBroadcasts() {
-    const [messages, setMessages] = useState([]);
+    const [broadcasts, setBroadcasts] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchMessages = async () => {
+        const fetchBroadcasts = async () => {
             try {
                 const res = await api.get('/employee/dashboard/broadcasts');
-                setMessages(res.data);
+                setBroadcasts(res.data);
             } catch (error) {
                 console.error("Error fetching broadcasts", error);
             } finally {
@@ -18,46 +18,45 @@ export default function EmployeeBroadcasts() {
             }
         };
 
-        fetchMessages();
+        fetchBroadcasts();
     }, []);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-500 font-semibold animate-pulse">Loading broadcasts...</p>
+        </div>
+    );
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <h1 className="text-2xl font-bold text-slate-800">Broadcast Messages</h1>
+        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+            <div className="flex flex-col gap-1.5">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight text-center md:text-left">Broadcasts</h1>
+                <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest text-center md:text-left flex items-center justify-center md:justify-start gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    Live Announcements
+                </p>
+            </div>
 
-            <div className="space-y-4">
-                {messages.length === 0 ? (
-                    <div className="py-12 text-center text-slate-500 bg-slate-50 rounded-xl">
-                        No messages received.
+            <div className="grid gap-6">
+                {broadcasts.length === 0 ? (
+                    <div className="py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                        <Megaphone className="mx-auto text-slate-300 mb-2" size={40} />
+                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No active broadcasts</p>
                     </div>
                 ) : (
-                    messages.map(msg => (
-                        <div key={msg._id} className="flex gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                                <MessageSquare size={20} />
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-start mb-1">
-                                    <h3 className="font-semibold text-slate-900">
-                                        {msg.senderId?.fullName || "Admin"}
-                                    </h3>
-                                    <span className="text-xs text-slate-400">
-                                        {new Date(msg.createdAt).toLocaleString()}
+                    broadcasts.map((broadcast) => (
+                        <div key={broadcast._id} className="group bg-white p-6 rounded-3xl border border-slate-100 shadow-lg shadow-slate-100/50 transition-all hover:border-blue-100 hover:shadow-xl active:scale-[0.99]">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{broadcast.title}</h3>
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full whitespace-nowrap">
+                                        {new Date(broadcast.createdAt).toLocaleDateString()}
                                     </span>
                                 </div>
-                                <div className="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">
-                                    {msg.targetAll ? "To: All Employees" : "To: Your Group"}
-                                </div>
-                                <div className="prose prose-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                    {msg.content}
-                                </div>
-                                {msg.attachments && msg.attachments.length > 0 && (
-                                    <div className="mt-2 text-xs text-blue-600">
-                                        {msg.attachments.length} Attachment(s)
-                                    </div>
-                                )}
+                                <p className="text-slate-600 font-semibold leading-relaxed text-sm md:text-base">
+                                    {broadcast.message}
+                                </p>
                             </div>
                         </div>
                     ))

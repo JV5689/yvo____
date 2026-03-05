@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { BadgeDollarSign, Search, Calendar, CheckCircle, Clock, Calculator } from 'lucide-react';
+import { IndianRupee, Search, Calendar, CheckCircle, Clock, Calculator, Trash2, FileText, Download } from 'lucide-react';
 import api from '../../services/api';
+import html2pdf from 'html2pdf.js';
+import { useUI } from '../../context/UIContext';
 
 export default function Payroll() {
+    const { confirm, alert, toast } = useUI();
     const [employees, setEmployees] = useState([]);
     const [salaryRecords, setSalaryRecords] = useState([]);
+    const [companyConfig, setCompanyConfig] = useState({ name: '', address: '' });
     const [loading, setLoading] = useState(true);
     const [showPayModal, setShowPayModal] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [payForm, setPayForm] = useState({
         amount: '',
+        bonus: 0,
         payPeriod: '', // e.g., 'October 2023'
         paymentDate: new Date().toISOString().slice(0, 10),
-        remarks: ''
+        remarks: '',
     });
 
     const [calculation, setCalculation] = useState(null);
@@ -37,11 +42,12 @@ export default function Payroll() {
             const month = new Date(`${monthName} 1, 2000`).getMonth() + 1; // 1-12
 
             const res = await api.get(`/employees/${employeeId}/calculate-salary`, {
-                params: { month, year }
+                params: { month, year, bonus: payForm.bonus } // Send bonus to calc
             });
             setCalculation(res.data);
-            // Auto-fill amount
-            setPayForm(prev => ({ ...prev, amount: res.data.finalSalary }));
+            // Auto-fill amount, preserving current bonus if needed, or just use finalSalary which includes bonus
+            // But wait, if calculation comes back, it includes bonus passed in params.
+            setPayForm(prev => ({ ...prev, amount: parseFloat(res.data.finalSalary.toFixed(2)) }));
         } catch (err) {
             console.error("Calculation Error:", err);
             // Fallback or user alert
@@ -59,11 +65,10 @@ export default function Payroll() {
 
     // Helper to get payment status for an employee in selected period
     const getPaymentStatus = (employeeId) => {
+        const period = new Date(selectedYear, selectedMonth - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
         return salaryRecords.find(record => {
-            const recordDate = new Date(record.paymentDate);
-            return record.employeeId?._id === employeeId &&
-                recordDate.getMonth() + 1 === selectedMonth &&
-                recordDate.getFullYear() === selectedYear;
+            return (record.employeeId?.id || record.employeeId) === employeeId &&
+                record.payPeriod === period;
         });
     };
 
@@ -73,8 +78,7 @@ export default function Payroll() {
     const totalMonthlyLiability = employees.reduce((acc, emp) => acc + (emp.salary || 0) / 12, 0);
     const paidAmount = salaryRecords
         .filter(r => {
-            const d = new Date(r.paymentDate);
-            return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
+            return r.payPeriod === periodLabel;
         })
         .reduce((acc, r) => acc + r.amount, 0);
     const pendingAmount = Math.max(0, totalMonthlyLiability - paidAmount);
@@ -82,16 +86,22 @@ export default function Payroll() {
     const fetchData = async () => {
         try {
             const companyId = localStorage.getItem('companyId');
-            const [empRes, salaryRes] = await Promise.all([
+            const [empRes, salaryRes, configRes] = await Promise.all([
                 api.get('/employees', { params: { companyId } }),
-                api.get('/employees/salary-records', { params: { companyId } })
+                api.get('/employees/salary-records', { params: { companyId } }),
+                api.get('/company/config')
             ]);
-            console.log("Payroll Employees Fetched:", empRes.data);
-            console.log("Payroll Salary Records Fetched:", salaryRes.data);
             setEmployees(empRes.data);
             setSalaryRecords(salaryRes.data);
+            if (configRes.data?.company) {
+                setCompanyConfig({
+                    name: configRes.data.company.name || '',
+                    address: configRes.data.company.address || '',
+                    logo: configRes.data.company.logo || ''
+                });
+            }
         } catch (err) {
-            console.error("Payroll Fetch Error:", err);
+            console.error('Payroll Fetch Error:', err);
         } finally {
             setLoading(false);
         }
@@ -106,7 +116,8 @@ export default function Payroll() {
             amount: emp.salary ? (emp.salary / 12).toFixed(2) : '',
             payPeriod: period,
             paymentDate: new Date().toISOString().slice(0, 10),
-            remarks: 'Monthly Salary'
+            remarks: 'Monthly Salary',
+            bonus: 0
         });
 
         // Auto-calculate on open
@@ -117,22 +128,96 @@ export default function Payroll() {
     const handlePaySalary = async (e) => {
         e.preventDefault();
         try {
-            await api.post(`/employees/${selectedEmployee._id}/pay`, {
+            await api.post(`/employees/${selectedEmployee.id}/pay`, {
                 amount: payForm.amount,
                 payPeriod: payForm.payPeriod,
                 paymentDate: payForm.paymentDate,
                 remarks: payForm.remarks,
+                bonus: payForm.bonus,
                 companyId: localStorage.getItem('companyId'),
-                // Pass breakdown if needed for strict record keeping
-                ...calculation
+                ...(calculation || {}),
+                deductionAmount: calculation?.deduction ?? 0
             });
-            alert('Salary Paid Successfully!');
+            toast.success('Salary Paid Successfully!');
             setShowPayModal(false);
-            fetchData(); // Refresh to show Paid status
+            fetchData();
         } catch (err) {
             console.error(err);
-            alert('Failed to pay salary');
+            alert('Error', 'Failed to pay salary: ' + (err?.response?.data?.message || err.message), 'error');
         }
+    };
+
+    const handleDeleteSalary = async (recordId) => {
+        const ok = await confirm('Delete Salary Record', "Are you sure you want to delete this salary record? This will revert the status to Pending.", 'Delete');
+        if (!ok) return;
+        try {
+            await api.delete(`/employees/salary-records/${recordId}`);
+            fetchData();
+        } catch (err) {
+            console.error("Failed to delete salary record", err);
+            confirm("Error", "Failed to delete salary record", "OK", "danger");
+        }
+    };
+
+    const generatePaySlip = (employee, record) => {
+        const element = document.createElement('div');
+        element.innerHTML = `
+            <div style="padding: 40px; font-family: sans-serif; max-width: 800px; margin: 0 auto; border: 1px solid #eee;">
+                <h2 style="text-align: center; margin-bottom: 30px; color: #333;">PAYSLIP</h2>
+                
+                <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                    <div>
+                        <strong>${companyConfig.name || 'Company'}</strong><br>
+                        ${(companyConfig.address || '').replace(/\n/g, '<br>')}
+                    </div>
+                    <div style="text-align: right;">
+                        <strong>Payslip For:</strong> ${record.payPeriod}<br>
+                        <strong>Payment Date:</strong> ${new Date(record.paymentDate).toLocaleDateString()}
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px;">
+                    <strong>Employee Details:</strong><br>
+                    Name: ${employee.firstName} ${employee.lastName}<br>
+                    Employee ID: ${(employee.id || '').slice(-6).toUpperCase()}
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                    <thead>
+                        <tr style="background-color: #f8f9fa;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Description</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 2px solid #ddd;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">Basic Salary</td>
+                            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #eee;">₹${record.baseSalary?.toLocaleString() || (record.amount + (record.deductionAmount || 0)).toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee;">Bonus</td>
+                            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #eee; color: #16a34a;">+ ₹${(record.bonus || 0).toLocaleString()}</td>
+                        </tr>
+                        ${record.deductionAmount > 0 ? `
+                        <tr>
+                            <td style="padding: 12px; border-bottom: 1px solid #eee; color: #dc2626;">Deductions (Leaves)</td>
+                            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #eee; color: #dc2626;">- ₹${record.deductionAmount.toLocaleString()}</td>
+                        </tr>
+                        ` : ''}
+                        <tr style="font-weight: bold; background-color: #f8f9fa;">
+                            <td style="padding: 12px; border-bottom: 1px solid #ddd;">Net Payable</td>
+                            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #ddd;">₹${record.amount.toLocaleString()}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #666;">
+                    This is a computer-generated payslip and does not require a signature.
+                </div>
+            </div>
+        `;
+
+        html2pdf().from(element).save(`Payslip_${employee.firstName}_${record.payPeriod}.pdf`);
     };
 
     if (loading) return <div className="p-10 text-center">Loading Payroll...</div>;
@@ -175,12 +260,11 @@ export default function Payroll() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
                         <tr>
                             <th className="px-6 py-4">Employee</th>
-                            <th className="px-6 py-4">Position</th>
                             <th className="px-6 py-4">Annual Salary</th>
                             <th className="px-6 py-4">Monthly (Approx)</th>
                             <th className="px-6 py-4 text-center">Status</th>
@@ -188,12 +272,17 @@ export default function Payroll() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {employees.map(emp => {
-                            const payment = getPaymentStatus(emp._id);
+                        {employees.filter(emp => {
+                            const selectedPeriodEnd = new Date(selectedYear, selectedMonth, 0); // Last day of selected month
+                            const joiningDate = new Date(emp.dateHired);
+                            // Show only if joined before or during the selected month
+                            return joiningDate <= selectedPeriodEnd;
+                        }).map(emp => {
+                            const payment = getPaymentStatus(emp.id);
                             const isPaid = !!payment;
 
                             return (
-                                <tr key={emp._id} className="hover:bg-slate-50">
+                                <tr key={emp.id} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 font-medium text-slate-900">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
@@ -202,7 +291,6 @@ export default function Payroll() {
                                             {emp.firstName} {emp.lastName}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-slate-600">{emp.position}</td>
                                     <td className="px-6 py-4 text-slate-900 font-medium">₹{emp.salary?.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-emerald-600 font-medium">₹{(emp.salary / 12).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                                     <td className="px-6 py-4 text-center">
@@ -218,15 +306,28 @@ export default function Payroll() {
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         {isPaid ? (
-                                            <button disabled className="text-slate-400 text-xs font-medium cursor-not-allowed">
-                                                View Slip
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => generatePaySlip(emp, payment)}
+                                                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition"
+                                                    title="View Slip"
+                                                >
+                                                    <FileText size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteSalary(payment.id)}
+                                                    className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                    title="Revert Payment"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         ) : (
                                             <button
                                                 onClick={() => handleOpenPayModal(emp)}
                                                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
                                             >
-                                                <BadgeDollarSign size={14} /> Pay
+                                                <IndianRupee size={14} /> Pay
                                             </button>
                                         )}
                                     </td>
@@ -255,13 +356,43 @@ export default function Payroll() {
                                         value={payForm.payPeriod}
                                         onChange={e => setPayForm({ ...payForm, payPeriod: e.target.value })}
                                         placeholder="e.g. October 2023"
-                                        onBlur={() => calculateSalary(selectedEmployee._id, payForm.payPeriod)}
+                                        onBlur={() => calculateSalary(selectedEmployee.id, payForm.payPeriod)}
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-xs font-semibold text-slate-500 mb-1 block">Bonus (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full border border-slate-200 p-2 rounded-lg"
+                                        value={payForm.bonus}
+                                        onChange={e => {
+                                            const newBonus = Number(e.target.value);
+                                            // Auto-update amount locally
+                                            setPayForm(prev => {
+                                                const base = calculation ? calculation.baseSalary : (Number(prev.amount) - prev.bonus);
+                                                const newTotal = parseFloat((base + newBonus).toFixed(2));
+                                                return {
+                                                    ...prev,
+                                                    bonus: newBonus,
+                                                    amount: newTotal
+                                                };
+                                            });
+
+                                            // Also update calculation summary if it exists
+                                            if (calculation) {
+                                                setCalculation(prev => ({
+                                                    ...prev,
+                                                    finalSalary: calculation.baseSalary + newBonus
+                                                }));
+                                            }
+                                        }}
+                                    // onBlur removed as we calculate locally. Api calc still happens on period change or button click
                                     />
                                 </div>
                                 <div className="flex items-end mb-1">
                                     <button
                                         type="button"
-                                        onClick={() => calculateSalary(selectedEmployee._id, payForm.payPeriod)}
+                                        onClick={() => calculateSalary(selectedEmployee.id, payForm.payPeriod)}
                                         className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100"
                                         title="Recalculate"
                                     >
@@ -291,7 +422,12 @@ export default function Payroll() {
                                         <span>Working Days (Avg):</span>
                                         <span>{calculation.workingDaysUsed} days</span>
                                     </div>
+                                    <div className="flex justify-between text-emerald-600">
+                                        <span>Bonus:</span>
+                                        <span>+ ₹{payForm.bonus.toLocaleString()}</span>
+                                    </div>
                                     <div className="flex justify-between text-red-600">
+                                        {/* Deductions Visible */}
                                         <span>Deduction ({calculation.chargeableLeaves} days):</span>
                                         <span>- ₹{calculation.deduction.toLocaleString()}</span>
                                     </div>

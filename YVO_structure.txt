@@ -1,0 +1,212 @@
+YVO/
+├─ apps/
+│  ├─ web/                                      # React website (marketing + portal + admin)
+│  │  ├─ public/
+│  │  ├─ src/
+│  │  │  ├─ app/
+│  │  │  │  ├─ routes/                          # route config (public/portal/admin)
+│  │  │  │  ├─ layout/                          # PublicLayout, PortalLayout, AdminLayout
+│  │  │  │  └─ guards/                          # ProtectedRoute, RoleGuard
+│  │  │  ├─ pages/
+│  │  │  │  ├─ public/                          # marketing pages
+│  │  │  │  │  ├─ Home.jsx
+│  │  │  │  │  ├─ Features.jsx
+│  │  │  │  │  ├─ Pricing.jsx
+│  │  │  │  │  ├─ DemoRequest.jsx
+│  │  │  │  │  ├─ Contact.jsx
+│  │  │  │  │  └─ Download.jsx                  # download desktop app
+│  │  │  │  ├─ auth/
+│  │  │  │  │  ├─ Login.jsx                     # customer/admin login
+│  │  │  │  │  ├─ ForgotPassword.jsx
+│  │  │  │  │  └─ ResetPassword.jsx
+│  │  │  │  ├─ portal/                          # after login (customer portal)
+│  │  │  │  │  ├─ Dashboard.jsx
+│  │  │  │  │  ├─ Billing.jsx
+│  │  │  │  │  ├─ Profile.jsx
+│  │  │  │  │  └─ Settings.jsx
+│  │  │  │  ├─ companyAdmin/                    # company admin (customer side)
+│  │  │  │  │  ├─ Users.jsx
+│  │  │  │  │  ├─ Roles.jsx
+│  │  │  │  │  ├─ License.jsx
+│  │  │  │  │  └─ AuditLogs.jsx
+│  │  │  │  └─ superAdmin/                      # YOUR control panel
+│  │  │  │     ├─ Overview.jsx
+│  │  │  │     ├─ Companies.jsx
+│  │  │  │     ├─ Users.jsx
+│  │  │  │     ├─ Plans.jsx
+│  │  │  │     ├─ Payments.jsx
+│  │  │  │     └─ Support.jsx
+│  │  │  ├─ features/                           # feature-wise UI + logic
+│  │  │  │  ├─ auth/
+│  │  │  │  │  ├─ components/
+│  │  │  │  │  ├─ auth.api.js
+│  │  │  │  │  ├─ auth.store.js                 # context/zustand/redux (optional)
+│  │  │  │  │  └─ hooks.js
+│  │  │  │  ├─ demo/
+│  │  │  │  │  ├─ demo.api.js
+│  │  │  │  │  └─ components/
+│  │  │  │  ├─ billing/
+│  │  │  │  │  ├─ billing.api.js
+│  │  │  │  │  └─ components/
+│  │  │  │  ├─ support/
+│  │  │  │  └─ aiHub/                            # explore AI features
+│  │  │     ├─ pages/AiHub.jsx
+│  │  │     ├─ components/
+│  │  │     └─ aiHub.api.js
+│  │  │  ├─ ai/                                  # GLOBAL AI client (web)
+│  │  │  │  ├─ aiClient.js                       # calls Node API which calls Python
+│  │  │  │  └─ toolRegistry.js                   # tool names mapping
+│  │  │  ├─ api/
+│  │  │  │  ├─ httpClient.js                     # baseURL + token interceptor
+│  │  │  │  └─ endpoints.js
+│  │  │  ├─ components/                          # shared UI components
+│  │  │  ├─ utils/
+│  │  │  ├─ styles/
+│  │  │  ├─ App.jsx
+│  │  │  └─ main.jsx
+│  │  ├─ .env
+│  │  ├─ package.json
+│  │  └─ vite.config.js
+│  │
+│  ├─ desktop/                                   # Electron + React desktop app
+│  │  ├─ electron/
+│  │  │  ├─ main.js                              # electron main process
+│  │  │  ├─ preload.js                           # ipc bridge
+│  │  │  └─ updater.js                           # optional auto-updates
+│  │  ├─ src/
+│  │  │  ├─ app/
+│  │  │  │  ├─ routes/
+│  │  │  │  ├─ layout/
+│  │  │  │  └─ guards/
+│  │  │  ├─ pages/
+│  │  │  │  ├─ auth/
+│  │  │  │  │  └─ Login.jsx
+│  │  │  │  └─ app/
+│  │  │  │     ├─ Dashboard.jsx
+│  │  │  │     ├─ Finance/
+│  │  │  │     ├─ Invoice/
+│  │  │  │     ├─ Inventory/
+│  │  │  │     ├─ Analytics/
+│  │  │  │     ├─ Reminders/
+│  │  │  │     ├─ Employees/
+│  │  │  │     └─ AiHub/
+│  │  │  ├─ features/                            # feature modules (desktop)
+│  │  │  │  ├─ finance/
+│  │  │  │  │  ├─ finance.api.js
+│  │  │  │  │  └─ ai/
+│  │  │  │  ├─ invoice/
+│  │  │  │  │  └─ ai/
+│  │  │  │  ├─ inventory/
+│  │  │  │  │  └─ ai/
+│  │  │  │  ├─ employees/
+│  │  │  │  │  └─ ai/
+│  │  │  │  ├─ reminders/
+│  │  │  │  │  └─ ai/
+│  │  │  │  ├─ analytics/
+│  │  │  │  │  └─ ai/
+│  │  │  │  └─ aiHub/
+│  │  │  ├─ ai/                                  # GLOBAL AI client (desktop)
+│  │  │  │  ├─ aiClient.js
+│  │  │  │  └─ toolRegistry.js
+│  │  │  ├─ api/
+│  │  │  │  ├─ httpClient.js
+│  │  │  │  └─ endpoints.js
+│  │  │  ├─ components/
+│  │  │  ├─ utils/
+│  │  │  ├─ App.jsx
+│  │  │  └─ main.jsx
+│  │  ├─ .env
+│  │  └─ package.json
+│  │
+│  ├─ api/                                       # Node/Express backend (public)
+│  │  ├─ src/
+│  │  │  ├─ config/
+│  │  │  │  ├─ env.js                            # validate env vars
+│  │  │  │  ├─ db.js                             # Mongo connect
+│  │  │  │  ├─ cors.js
+│  │  │  │  └─ mail.js
+│  │  │  ├─ middleware/
+│  │  │  │  ├─ auth.middleware.js                # JWT verify
+│  │  │  │  ├─ rbac.middleware.js                # permissions check
+│  │  │  │  ├─ validate.middleware.js
+│  │  │  │  └─ error.middleware.js
+│  │  │  ├─ models/
+│  │  │  │  ├─ User.js
+│  │  │  │  ├─ Company.js
+│  │  │  │  ├─ Plan.js
+│  │  │  │  ├─ Subscription.js
+│  │  │  │  ├─ License.js
+│  │  │  │  ├─ Payment.js
+│  │  │  │  ├─ DemoRequest.js
+│  │  │  │  ├─ Invoice.js
+│  │  │  │  ├─ InventoryItem.js
+│  │  │  │  ├─ Employee.js
+│  │  │  │  ├─ Reminder.js
+│  │  │  │  ├─ Report.js
+│  │  │  │  └─ AuditLog.js
+│  │  │  ├─ modules/
+│  │  │  │  ├─ auth/
+│  │  │  │  │  ├─ auth.routes.js
+│  │  │  │  │  ├─ auth.controller.js
+│  │  │  │  │  ├─ auth.service.js
+│  │  │  │  │  └─ auth.validators.js
+│  │  │  │  ├─ companies/
+│  │  │  │  ├─ users/
+│  │  │  │  ├─ billing/
+│  │  │  │  │  ├─ plans.routes.js
+│  │  │  │  │  ├─ payments.routes.js
+│  │  │  │  │  ├─ webhook.routes.js             # payment provider webhook
+│  │  │  │  │  └─ billing.service.js
+│  │  │  │  ├─ licenses/
+│  │  │  │  ├─ invoices/
+│  │  │  │  ├─ inventory/
+│  │  │  │  ├─ employees/
+│  │  │  │  ├─ reminders/
+│  │  │  │  ├─ analytics/
+│  │  │  │  └─ ai/
+│  │  │  │     ├─ ai.routes.js                  # /ai/ask
+│  │  │  │     ├─ ai.controller.js
+│  │  │  │     └─ ai.service.js                 # calls Python AI service
+│  │  │  ├─ utils/
+│  │  │  │  ├─ jwt.js
+│  │  │  │  ├─ mailer.js
+│  │  │  │  ├─ password.js
+│  │  │  │  └─ logger.js
+│  │  │  ├─ app.js
+│  │  │  └─ server.js
+│  │  ├─ .env
+│  │  └─ package.json
+│  │
+│  └─ ai-service/                                # Python AI microservice (private)
+│     ├─ app/
+│     │  ├─ main.py                              # FastAPI entry
+│     │  ├─ core/
+│     │  │  ├─ config.py
+│     │  │  └─ security.py                       # X-AI-SECRET check
+│     │  ├─ schemas.py                           # request/response models
+│     │  ├─ tools/                               # AI tools per domain
+│     │  │  ├─ finance.py
+│     │  │  ├─ invoice.py
+│     │  │  ├─ inventory.py
+│     │  │  ├─ employees.py
+│     │  │  ├─ reminders.py
+│     │  │  └─ analytics.py
+│     │  ├─ prompts/
+│     │  └─ services/
+│     │     └─ llm_client.py                     # OpenAI/Gemini/etc wrapper
+│     ├─ requirements.txt
+│     ├─ .env
+│     └─ Dockerfile (optional)
+│
+├─ packages/
+│  └─ shared/                                    # shared constants/types
+│     ├─ src/
+│     │  ├─ roles.js
+│     │  ├─ permissions.js
+│     │  ├─ constants.js
+│     │  └─ validators.js
+│     └─ package.json
+│
+├─ package.json                                  # root scripts
+├─ .gitignore
+└─ README.md

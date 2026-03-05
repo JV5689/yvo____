@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YVO | All your business on one platform</title>
+  <style>
+    /* Critical CSS to handle font loading flash */
+    body { font-family: sans-serif; opacity: 0; transition: opacity 0.2s; }
+    body.fonts-loaded { opacity: 1; }
+  </style>
+</head>
+<body class="fonts-loaded">
   <div id="root"></div>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script type="module" src="/src/main.jsx"></script>
-  hello
 </body>
-
 </html>

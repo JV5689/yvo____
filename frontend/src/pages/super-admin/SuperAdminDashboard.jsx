@@ -156,9 +156,15 @@ export default function SuperAdminDashboard() {
                                         </td>
                                         <td className="py-3 px-4">
                                             {company.subscriptionStatus === 'active' ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Active
-                                                </span>
+                                                new Date(company.subscriptionEndsAt) < new Date() ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-100">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> Overdue
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Active
+                                                    </span>
+                                                )
                                             ) : (
                                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div> {company.subscriptionStatus || 'Inactive'}
