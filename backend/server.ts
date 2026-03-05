@@ -1,11 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import mongoose from 'mongoose';
-import dns from 'dns';
-
-// Fix for MongoDB Atlas ECONNREFUSED issues on some networks
-dns.setServers(['8.8.8.8', '1.1.1.1']);
 import { securityHeaders, corsOptions } from './src/middleware/security.js';
 import { globalLimiter } from './src/middleware/rateLimiter.js';
 import { errorHandler } from './src/middleware/errorHandler.js';
@@ -46,18 +41,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Disable buffering to prevent timeouts when DB is not connected
-mongoose.set('bufferCommands', false);
-
 // Database Connection
-if (process.env.SKIP_DB === 'true') {
-  console.log(`Skipping MongoDB connection (SKIP_DB=${process.env.SKIP_DB})`);
-} else {
-  const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
-  mongoose.connect(uri)
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
-}
 connectDb();
 
 // Routes
@@ -91,7 +75,7 @@ app.get('/', (req: express.Request, res: express.Response) => {
 // Error Handler (Must be last)
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
