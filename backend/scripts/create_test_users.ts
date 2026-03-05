@@ -51,13 +51,13 @@ async function main() {
     const hashedEmpPass = await hashPassword(empPass);
 
     const employee = await prisma.employee.upsert({
-        where: { phone: '+919999999999' },
+        where: { phone: '9999999999' },
         update: { password: hashedEmpPass },
         create: {
             firstName: 'Test',
             lastName: 'Employee',
-            phone: '+919999999999',
-            email: 'test_emp@yvo.com',
+            phone: '9999999999',
+            email: 'test_emp2@yvo.com',
             password: hashedEmpPass,
             companyId: company.id,
             salary: 50000,
