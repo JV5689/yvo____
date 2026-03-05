@@ -1,5 +1,5 @@
 import React from 'react';
-import { A4_WIDTH_PX, A4_HEIGHT_PX, renderBlock } from '../../utils/invoiceRendererUtils';
+import { A4_WIDTH_PX, A4_HEIGHT_PX, renderBlock } from '../../utils/invoiceRendererUtils.jsx';
 
 export default function InvoiceRenderer({ layout, invoiceData, companyConfig, taxRate, calculateSubtotal, tax, total, editable = false, onUpdateData, onUpdateConfig, options }) {
     const activeLayout = layout && layout.length > 0 ? layout : [];

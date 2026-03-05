@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import { X, Type, Image, Hash, IndianRupee, FileText, Settings, AlignLeft, Grid, ChevronUp, ChevronDown, Plus } from 'lucide-react';
-import { generateBlockId, renderBlock } from '../../utils/invoiceRendererUtils';
+import { generateBlockId, renderBlock } from '../../utils/invoiceRendererUtils.jsx';
 
 const mmToPx = 3.7795275591; // 1mm = ~3.78px for screen resolution matching A4
 const A4_WIDTH_PX = 210 * mmToPx;

@@ -86,13 +86,12 @@ export const AuthProvider = ({ children }) => {
         console.log("AuthContext: loginEmployee called", phone);
         const res = await api.post('/employee/auth/login', { phone, password });
         console.log("AuthContext: loginEmployee response", res.data);
-        const { token, user: userData } = res.data;
+        const { token, ...userData } = res.data;
 
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('userRole', 'employee'); // Set role for interceptors
+        localStorage.setItem('userRole', 'employee');
 
-        // Employee might not need companyId locally if backend handles it via token
         if (userData.company) {
             const coId = typeof userData.company === 'string'
                 ? userData.company

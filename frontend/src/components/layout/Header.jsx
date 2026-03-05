@@ -40,10 +40,23 @@ export default function Header() {
 
   useEffect(() => {
     const loadProfile = () => {
-      const name = localStorage.getItem('userProfileName') || '';
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
       const role = localStorage.getItem('userRole') || '';
-      const hasToken = Boolean(localStorage.getItem('userToken'));
-      setProfile(hasToken ? { name: name || 'Account', role } : { name: '', role: '' });
+
+      if (token && userStr) {
+        try {
+          const userData = JSON.parse(userStr);
+          setProfile({
+            name: userData.firstName ? `${userData.firstName} ${userData.lastName || ''}` : 'Account',
+            role: role || userData.role || ''
+          });
+        } catch (e) {
+          setProfile({ name: '', role: '' });
+        }
+      } else {
+        setProfile({ name: '', role: '' });
+      }
     };
 
     loadProfile();
@@ -69,9 +82,10 @@ export default function Header() {
   }, [profile.name]);
 
   const handleLogout = () => {
-    localStorage.removeItem('userToken');
-    localStorage.removeItem('userProfileName');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('companyId');
     setProfile({ name: '', role: '' });
   };
 

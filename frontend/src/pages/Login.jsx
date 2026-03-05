@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext.jsx";
 import { Link, useNavigate } from "react-router-dom";
 
 const inputClassName =
@@ -8,64 +8,36 @@ const inputClassName =
 const phoneInputClassName =
   "flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
 
-
-
 export default function Login() {
   const navigate = useNavigate();
-
-  const loginMethod = "phone"; // Default to phone
-
-  const [email, setEmail] = useState("");
-  const [emailPassword, setEmailPassword] = useState("");
+  const { loginEmployee } = useAuth();
 
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
-  const [phonePassword, setPhonePassword] = useState("");
-
-  // eslint-disable-next-line no-unused-vars
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
-  const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const { login, loginEmployee } = useAuth();
-
-  const canSubmit = loginMethod === "email" ? email && emailPassword : phone && phonePassword;
+  const canSubmit = phone.trim().length >= 8 && password.trim().length >= 4;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canSubmit) return;
     setErrorMsg("");
-    setSubmitting(true);
-    console.log("Submitting Login:", loginMethod);
+    setIsSubmitting(true);
 
     try {
-      if (loginMethod === "phone") {
-        console.log("Attempting Employee Login...", countryCode + phone);
-        await loginEmployee(countryCode + phone, phonePassword);
-        console.log("Employee Login Success, Navigating...");
-        navigate("/employee-dashboard", { replace: true });
-        return;
-      }
-
-      console.log("Attempting Admin Login...", email);
-      const userData = await login(email, emailPassword);
-
-      // STRICT SEPARATION: Block Super Admin
-      if (userData.isSuperAdmin || userData.role === 'SUPER_ADMIN') {
-        // Generic error to prevent role enumeration
-        throw new Error("Invalid email or password");
-      }
-      console.log("Admin Login Success, Navigating...");
-      navigate("/dashboard", { replace: true });
+      const fullPhone = countryCode + phone.replace(/[^\d]/g, '');
+      await loginEmployee(fullPhone, password);
+      navigate("/employee-dashboard", { replace: true });
     } catch (err) {
       console.error("Login Error:", err);
-      setErrorMsg(err?.response?.data?.message || err.message || "Something went wrong");
+      setErrorMsg(err?.response?.data?.message || err.message || "Invalid phone or password");
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-700">
@@ -81,9 +53,7 @@ export default function Login() {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-6 py-16">
         <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="space-y-2 text-center">
-            <h1 className="text-2xl font-semibold text-slate-900">
-              {loginMethod === 'phone' ? 'Employee Login' : 'Admin Login'}
-            </h1>
+            <h1 className="text-2xl font-semibold text-slate-900">Employee Login</h1>
             <p className="text-sm text-slate-500">Sign in to your account</p>
           </div>
 
@@ -93,70 +63,63 @@ export default function Login() {
             </div>
           )}
 
-          {/* NORMAL LOGIN FORM */}
           <form className="space-y-4 mt-6" onSubmit={handleSubmit}>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Phone Number</label>
+              <div className="flex gap-2 mt-1">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-24 rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                >
+                  <option value="+91">+91</option>
+                  <option value="+1">+1</option>
+                </select>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="10 digit phone"
+                  className={phoneInputClassName}
+                />
+              </div>
+            </div>
 
-            {/* HIDDEN TOGGLE - REPLACED WITH LINK BELOW */}
-            {/* <div className="rounded-lg bg-slate-100 p-1"> ... </div> */}
-
-            {loginMethod === "email" ? (
-              <>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  placeholder="Email"
-                  className={inputClassName}
-                />
-                <input
-                  value={emailPassword}
-                  onChange={(e) => setEmailPassword(e.target.value)}
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  className={inputClassName}
-                />
-              </>
-            ) : (
-              <>
-                <div className="flex gap-2">
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="w-28 rounded-lg border border-slate-200 px-2 py-2"
-                  >
-                    <option value="+91">+91</option>
-                    <option value="+1">+1</option>
-                  </select>
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Phone"
-                    className={phoneInputClassName}
-                  />
-                </div>
-                <input
-                  value={phonePassword}
-                  onChange={(e) => setPhonePassword(e.target.value)}
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  className={inputClassName}
-                />
-              </>
-            )}
+            <div>
+              <div className="flex justify-between items-center pl-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-700"
+                >
+                  {showPassword ? "HIDE" : "SHOW"}
+                </button>
+              </div>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter password"
+                className={inputClassName}
+              />
+            </div>
 
             <button
               type="submit"
-              disabled={!canSubmit}
-              className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white ${canSubmit ? "bg-blue-600" : "bg-slate-300"
+              disabled={!canSubmit || isSubmitting}
+              className={`w-full rounded-lg px-3 py-2 text-sm font-semibold text-white transition-colors ${canSubmit && !isSubmitting ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 cursor-not-allowed"
                 }`}
             >
-              {submitting ? "Logging in..." : "Login"}
+              {isSubmitting ? "Logging in..." : "Login"}
             </button>
-
+            <div className="pt-4 border-t border-slate-50 flex flex-col items-center gap-2">
+              <Link to="/admin-login" className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors">
+                Company Admin Login
+              </Link>
+            </div>
           </form>
         </div>
       </main>
     </div>
   );
 }
-
