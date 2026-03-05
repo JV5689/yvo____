@@ -208,8 +208,9 @@ export const createEmployee = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Company ID, Name, Email, Phone, and Password are required' });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Hash password using the centralized Argon2 utility for consistency
+        const { hashPassword } = await import('../../src/security/hashing.js');
+        const hashedPassword = await hashPassword(password);
 
         const newEmployee = await prisma.employee.create({
             data: {
@@ -242,9 +243,10 @@ export const updateEmployee = async (req: Request, res: Response) => {
         const { id } = req.params;
         const updates: any = { ...req.body };
 
-        // Hash password if it is being updated
+        // Hash password if it is being updated (using centralized Argon2)
         if (updates.password) {
-            updates.password = await bcrypt.hash(updates.password, 10);
+            const { hashPassword } = await import('../../src/security/hashing.js');
+            updates.password = await hashPassword(updates.password);
         }
 
         const currentEmployee = await prisma.employee.findUnique({ where: { id: String(id) } }); // Changed from Employee.findById

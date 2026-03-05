@@ -1,49 +1,72 @@
-const COMPANY_ID = '69873a5a1d893c740340fcba';
-const API_URL = 'http://localhost:4000/api/employees';
+import { prisma } from './src/config/db.js';
+import { hashPassword } from './src/security/hashing.js';
 
-async function createEmployee() {
+async function main() {
     try {
-        const uniqueId = Math.floor(1000 + Math.random() * 9000); // 4 digit random
-        const phone = `+91987654${uniqueId}`;
-        const email = `demo.employee.${uniqueId}@example.com`;
-        const password = 'password123';
-
-        console.log(`Creating employee safely...`);
-
-        const res = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                companyId: COMPANY_ID,
-                firstName: 'Demo',
-                lastName: `User ${uniqueId}`,
-                email: email,
-                phone: phone,
-                password: password,
-                position: 'Tester',
-                department: 'QA',
-                salary: 60000,
-                status: 'Active',
-                dateHired: new Date().toISOString()
-            })
-        });
-
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Failed: ${res.status} ${err}`);
+        // 1. Find a company
+        const company = await prisma.company.findFirst();
+        if (!company) {
+            console.error("No company found in database. Please register a company first.");
+            return;
         }
 
-        const data = await res.json();
-        console.log('\n=== Employee Created ===');
-        console.log(`Name:     ${data.firstName} ${data.lastName}`);
-        console.log(`Phone:    ${data.phone}`);
-        console.log(`Password: ${password}`);
-        console.log(`Email:    ${data.email}`);
-        console.log('========================\n');
+        console.log(`Using Company: ${company.name} (${company.id})`);
 
-    } catch (error) {
-        console.error('Error:', error.message);
+        // 2. Ensure feature flags allow employee login
+        let flags = company.featureFlags || {};
+        if (typeof flags === 'string') flags = JSON.parse(flags);
+
+        flags['module_employees'] = true;
+
+        await prisma.company.update({
+            where: { id: company.id },
+            data: { featureFlags: flags }
+        });
+        console.log("Updated company feature flags to allow employee access.");
+
+        // 3. Create/Update Test Employee
+        const phone = "9999999999";
+        const password = "password123";
+        const hashedPassword = await hashPassword(password);
+
+        // Delete any existing employee with this phone to avoid collision (including mangled ones)
+        await prisma.employee.deleteMany({
+            where: {
+                OR: [
+                    { phone: phone },
+                    { phone: { startsWith: `${phone}-deleted-` } }
+                ]
+            }
+        });
+
+        const employee = await prisma.employee.create({
+            data: {
+                companyId: company.id,
+                firstName: "Test",
+                lastName: "Employee",
+                email: "test_emp@yvo.com",
+                phone: phone,
+                password: hashedPassword,
+                salary: 50000,
+                status: "Active",
+                dateHired: new Date(),
+                category: "General"
+            }
+        });
+
+        console.log("\nSUCCESS! Test Employee Created:");
+        console.log("------------------------------");
+        console.log(`Phone: ${phone}`);
+        console.log(`Password: ${password}`);
+        console.log(`Company: ${company.name}`);
+        console.log("------------------------------");
+        console.log("You can now use these credentials to log in at http://localhost:5174/login");
+
+    } catch (err) {
+        console.error("Error creating test employee:", err);
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-createEmployee();
+main();

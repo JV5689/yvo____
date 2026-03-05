@@ -8,9 +8,13 @@ export const loginEmployee = async (req: Request, res: Response) => {
     let { phone, password } = req.body;
 
     const numericPhone = phone.replace(/[^\d]/g, '');
-    const normalizedPhone = numericPhone.length > 10 ? numericPhone.slice(-10) : numericPhone;
+    const last10Digits = numericPhone.length >= 10 ? numericPhone.slice(-10) : numericPhone;
 
-    const employees: any[] = await prisma.$queryRawUnsafe('SELECT * FROM employee WHERE phone = ? LIMIT 1', normalizedPhone);
+    // Search for employee with phone matching last 10 digits
+    const employees: any[] = await prisma.$queryRawUnsafe(
+        'SELECT * FROM employee WHERE phone LIKE ? LIMIT 1',
+        `%${last10Digits}`
+    );
     const employee = employees[0];
 
     if (!employee || !employee.password || !(await verifyPassword(password, employee.password))) {
