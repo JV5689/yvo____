@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import { X, Type, Image, Hash, IndianRupee, FileText, Settings, AlignLeft, Grid, ChevronUp, ChevronDown, Plus } from 'lucide-react';
-import { renderBlock } from './InvoiceRenderer';
+import { generateBlockId, renderBlock } from '../../utils/invoiceRendererUtils';
 
 const mmToPx = 3.7795275591; // 1mm = ~3.78px for screen resolution matching A4
 const A4_WIDTH_PX = 210 * mmToPx;
@@ -82,7 +82,7 @@ export default function TemplateDesigner({ value, onChange }) {
     const addWidget = (widgetInfo) => {
         // Place new blocks somewhere near the top middle
         const newBlock = {
-            id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: generateBlockId(),
             type: widgetInfo.type,
             config: {
                 x: 50,
@@ -408,10 +408,9 @@ export default function TemplateDesigner({ value, onChange }) {
                                                 { id: 'col_total', key: 'total', label: 'Total', align: 'right', isCurrency: true, width: '120px' }
                                             ];
                                             const currentConfigCols = selectedBlock.config.columns || fallbackCols;
-                                            const uniqueId = Date.now();
                                             const newCols = [...currentConfigCols, {
-                                                id: `col_${uniqueId}`,
-                                                key: `custom_${uniqueId}`,
+                                                id: generateBlockId(),
+                                                key: `custom_${Date.now()}`,
                                                 label: 'New Column',
                                                 align: 'left',
                                                 width: 'auto'

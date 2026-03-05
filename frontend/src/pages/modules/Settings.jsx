@@ -6,7 +6,7 @@ import { useUI } from '../../context/UIContext';
 
 export default function Settings() {
     const { user } = useAuth();
-    const { alert, confirm, toast } = useUI();
+    const { alert, toast } = useUI();
     const [loading, setLoading] = useState(false);
 
     // In real app, fetch from /api/company/profile

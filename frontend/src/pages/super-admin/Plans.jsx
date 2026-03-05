@@ -61,7 +61,7 @@ export default function Plans() {
 
     useEffect(() => {
         fetchPlans();
-    }, []);
+    }, [fetchPlans]);
 
     useEffect(() => {
         if (activePlan) {
@@ -73,7 +73,7 @@ export default function Plans() {
         }
     }, [activePlan]);
 
-    const fetchPlans = async (selectNewId = null) => {
+    const fetchPlans = React.useCallback(async (selectNewId = null) => {
         setLoading(true);
         try {
             const res = await api.get('/sa/plans');
@@ -81,17 +81,17 @@ export default function Plans() {
             const fetchedPlans = (res.data || []).filter(p => !p.isArchived);
             setPlans(fetchedPlans);
 
-            if (selectNewId) {
-                setActivePlanId(selectNewId);
-            } else if (!activePlanId && fetchedPlans.length > 0) {
-                setActivePlanId(fetchedPlans[0]._id);
-            }
-        } catch (err) {
+            setActivePlanId(currentId => {
+                if (selectNewId) return selectNewId;
+                if (!currentId && fetchedPlans.length > 0) return fetchedPlans[0]._id;
+                return currentId;
+            });
+        } catch {
             toast.error("Failed to fetch plans");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const handleUpdateFeatures = async () => {
         if (!activePlanId) return;
@@ -101,7 +101,6 @@ export default function Plans() {
             // Update local state to reflect saved changes
             fetchPlans(activePlanId);
         } catch (err) {
-            console.error("Save features error:", err);
             toast.error("Failed to save: " + (err.response?.data?.message || err.message));
         }
     };
@@ -113,7 +112,7 @@ export default function Plans() {
             toast.success("Plan details updated!");
             fetchPlans(activePlanId);
         } catch (err) {
-            toast.error("Update failed: " + err.message);
+            toast.error("Update failed: " + (err.response?.data?.message || err.message));
         }
     };
 

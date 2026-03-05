@@ -114,7 +114,7 @@ export const generateBackup = async (jobId: string) => {
                     actorId: String(job.createdBy) || 'system',
                     action: 'BACKUP_READY',
                     targetId: job.id,
-                    targetModel: 'BackupJob',
+                    targetType: 'BackupJob',
                     details: { backupId: job.backupId, size: archive.pointer() }
                 }
             });
@@ -260,7 +260,7 @@ export const generateBackup = async (jobId: string) => {
                 actorId: String(job.createdBy) || 'system',
                 action: 'BACKUP_FAILED',
                 targetId: job.id,
-                targetModel: 'BackupJob',
+                targetType: 'BackupJob',
                 details: { error: error.message }
             }
         });

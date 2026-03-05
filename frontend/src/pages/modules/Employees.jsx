@@ -5,7 +5,7 @@ import EmployeeDetailsModal from '../../components/employee/EmployeeDetailsModal
 import { useUI } from '../../context/UIContext';
 
 export default function Employees() {
-    const { confirm, alert, toast } = useUI();
+    const { confirm, alert } = useUI();
     const [searchTerm, setSearchTerm] = useState('');
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,6 +23,7 @@ export default function Employees() {
 
     useEffect(() => {
         fetchEmployees();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isViewDeleted]);
 
     const fetchEmployees = async () => {

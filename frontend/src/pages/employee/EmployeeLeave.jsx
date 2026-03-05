@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { Plus, X, Calendar as CalendarIcon } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
@@ -17,21 +17,21 @@ export default function EmployeeLeave() {
         reason: ''
     });
 
-    const fetchLeaves = async () => {
+    const fetchLeaves = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get('/employee/dashboard/leaves');
             setLeaves(res.data);
-        } catch (error) {
-            console.error("Error fetching leaves", error);
+        } catch {
+            console.error("Error fetching leaves");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchLeaves();
-    }, []);
+    }, [fetchLeaves]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -41,7 +41,7 @@ export default function EmployeeLeave() {
             setShowForm(false);
             setFormData({ type: 'Sick Leave', startDate: '', endDate: '', reason: '' });
             fetchLeaves(); // Refresh list
-        } catch (error) {
+        } catch {
             alert('Error', 'Failed to apply for leave', 'error');
         }
     };

@@ -26,11 +26,6 @@ export default function Companies() {
     const [status, setStatus] = useState('active');
     const [newPassword, setNewPassword] = useState('');
 
-    useEffect(() => {
-        fetchCompanies();
-        fetchPlans();
-    }, []);
-
     const fetchCompanies = () => {
         setLoading(true);
         api.get('/sa/companies')
@@ -44,6 +39,12 @@ export default function Companies() {
             .then(res => setPlans(res.data || []))
             .catch(err => console.error(err));
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchCompanies();
+        fetchPlans();
+    }, []);
 
     const openModal = (company, mode) => {
         setSelectedCompany(company);

@@ -330,9 +330,11 @@ import { Lock } from 'lucide-react';
 const SidebarItem = ({ icon, label, href, active, subItems, locked, collapsed }) => {
     const [isOpen, setIsOpen] = useState(active);
 
-    useEffect(() => {
+    const [prevActive, setPrevActive] = useState(active);
+    if (active !== prevActive) {
+        setPrevActive(active);
         if (active) setIsOpen(true);
-    }, [active]);
+    }
 
     const handleLockedClick = (e) => {
         if (locked) {

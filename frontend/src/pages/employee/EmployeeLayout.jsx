@@ -17,10 +17,15 @@ export default function EmployeeLayout() {
         }
     }, [loading, user, navigate]);
 
+    const [prevPath, setPrevPath] = useState(location.pathname);
+
     // Close sidebar on route change (mobile)
-    useEffect(() => {
-        setIsSidebarOpen(false);
-    }, [location.pathname]);
+    if (location.pathname !== prevPath) {
+        setPrevPath(location.pathname);
+        if (isSidebarOpen) {
+            setIsSidebarOpen(false);
+        }
+    }
 
     const handleLogout = () => {
         logout();

@@ -7,13 +7,12 @@ import { useUI } from '../../context/UIContext';
 export default function Broadcasts() {
     const { confirm } = useUI();
     const [subTab, setSubTab] = useState('compose');
-    const [groups, setGroups] = useState([]);
     const [allEmployees, setAllEmployees] = useState([]);
-    const [loading, setLoading] = useState(false);
     const companyId = localStorage.getItem('companyId');
 
     // Modal & Selection States
     const [showCreateGroup, setShowCreateGroup] = useState(false);
+    const [groups, setGroups] = useState([]);
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [newGroupName, setNewGroupName] = useState('');
     const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
@@ -21,13 +20,6 @@ export default function Broadcasts() {
     // Message Composition State
     const [messageContent, setMessageContent] = useState('');
     const [recipientId, setRecipientId] = useState('all'); // 'all' or groupId
-
-    useEffect(() => {
-        if (companyId) {
-            fetchGroups();
-            fetchEmployees();
-        }
-    }, [companyId]);
 
     const fetchGroups = async () => {
         try {
@@ -54,6 +46,14 @@ export default function Broadcasts() {
             console.error("Failed to fetch employees", error);
         }
     };
+
+    useEffect(() => {
+        if (companyId) {
+            fetchGroups();
+            fetchEmployees();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyId]);
 
     const handleCreateGroup = async (e) => {
         e.preventDefault();
@@ -327,7 +327,7 @@ export default function Broadcasts() {
                                 </p>
                             </div>
                         ))}
-                        {groups.length === 0 && !loading && (
+                        {groups.length === 0 && (
                             <div className="col-span-full py-12 text-center text-slate-400">
                                 <Users size={48} className="mx-auto mb-3 opacity-20" />
                                 <p>No groups found. Create one to get started.</p>

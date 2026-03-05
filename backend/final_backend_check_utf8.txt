@@ -1,0 +1,5 @@
+﻿controllers/employeeFeatureController.ts(123,13): error TS2322: Type '{ sender: { select: { fullName: true; }; }; }' is not assignable to type 'never'.
+controllers/invoiceTemplateController.ts(33,24): error TS2353: Object literal may only specify known properties, and 'company' does not exist in type 'InvoiceTemplateInclude<DefaultArgs>'.
+controllers/modules/employeeController.ts(19,13): error TS2322: Type '{ employee: { select: { firstName: true; lastName: true; }; }; }' is not assignable to type 'never'.
+controllers/modules/employeeController.ts(499,13): error TS2322: Type '{ employee: { select: { firstName: true; lastName: true; }; }; }' is not assignable to type 'never'.
+src/middleware/auth.middleware.ts(45,7): error TS2353: Object literal may only specify known properties, and 'email' does not exist in type '{ userId: string; companyId?: string | undefined; role: string; isSuperAdmin: boolean; }'.

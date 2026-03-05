@@ -108,9 +108,9 @@ export const triggerManualBackup = async (req: Request, res: Response) => {
             data: {
                 actorId: userId,
                 action: 'SYSTEM_BACKUP',
-                targetModel: 'System',
+                targetType: 'System',
                 details: { status: 'Success', type: 'Manual' },
-                ipAddress: req.ip || '127.0.0.1'
+                ip: req.ip || '127.0.0.1'
             }
         });
 

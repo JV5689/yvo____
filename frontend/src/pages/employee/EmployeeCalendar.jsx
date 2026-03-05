@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import api from '../../services/api';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, ArrowLeft, ArrowRight, X } from 'lucide-react';
 
 export default function EmployeeCalendar() {
     const [events, setEvents] = useState([]);
@@ -9,11 +9,7 @@ export default function EmployeeCalendar() {
     const [selectedEvent, setSelectedEvent] = useState(null); // For modal
     const scrollRef = useRef(null);
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
-
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         try {
             const res = await api.get('/employee/dashboard/calendar');
             setEvents(res.data);
@@ -22,7 +18,11 @@ export default function EmployeeCalendar() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
 
     // Calendar Helpers
     const getDaysInMonth = (date) => {
@@ -39,18 +39,6 @@ export default function EmployeeCalendar() {
 
     const nextMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-    };
-
-    const scrollLeft = () => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
-        }
-    };
-
-    const scrollRight = () => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
-        }
     };
 
     const renderCalendarGrid = () => {

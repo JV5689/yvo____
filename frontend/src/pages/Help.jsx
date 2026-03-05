@@ -21,6 +21,7 @@ const FaqItem = ({ question, answer }) => (
   </div>
 );
 
+// eslint-disable-next-line no-unused-vars
 const SupportCard = ({ icon: Icon, title, description, actionText, actionLink }) => (
   <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
     <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6">

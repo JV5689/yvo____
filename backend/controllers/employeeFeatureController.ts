@@ -103,7 +103,7 @@ export const getEmployeeBroadcasts = async (req: Request, res: Response) => {
         const myGroupMemberships = await prisma.broadcastGroupMember.findMany({
             where: {
                 employeeId,
-                group: { companyId }
+                group: { companyId },
             },
             select: { groupId: true }
         });
@@ -120,7 +120,6 @@ export const getEmployeeBroadcasts = async (req: Request, res: Response) => {
                 ]
             },
             orderBy: { createdAt: 'desc' },
-            include: { sender: { select: { fullName: true } } },
             take: 50
         });
 

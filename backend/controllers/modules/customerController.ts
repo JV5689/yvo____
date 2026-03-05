@@ -17,8 +17,8 @@ export const getCustomers = async (req: Request, res: Response) => {
         orderBy: { lastModifiedAt: 'desc' }
     });
 
-    const mappedCustomers = await Promise.all(customers.map(async (customer) => {
-        const totalInvoiced = customer.invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    const mappedCustomers = await Promise.all(customers.map(async (customer: any) => {
+        const totalInvoiced = (customer.invoices || []).reduce((sum: number, inv: any) => sum + (inv.grandTotal || 0), 0);
 
         const payments = await prisma.payment.findMany({
             where: { customerId: customer.id, isDeleted: false }
@@ -77,12 +77,12 @@ export const getCustomerLedger = async (req: Request, res: Response) => {
         throw new AppError('Customer not found', 404);
     }
 
-    const totalInvoiced = customer.invoices
-        .filter(inv => inv.status !== 'DRAFT' && inv.status !== 'CANCELLED')
-        .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    const totalInvoiced = (customer as any).invoices
+        .filter((inv: any) => inv.status !== 'DRAFT' && inv.status !== 'CANCELLED')
+        .reduce((sum: number, inv: any) => sum + (inv.grandTotal || 0), 0);
 
-    const totalReceived = customer.payments
-        .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    const totalReceived = (customer as any).payments
+        .reduce((sum: number, pay: any) => sum + (pay.amount || 0), 0);
 
     const result = {
         ...customer,

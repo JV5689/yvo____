@@ -42,7 +42,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       userId,
       role,
       companyId,
-      email: decoded.email
+      email: decoded.email,
+      isSuperAdmin: decoded.isSuperAdmin || false
     };
 
     next();

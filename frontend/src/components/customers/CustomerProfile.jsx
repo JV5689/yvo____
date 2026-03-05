@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import InvoiceBuilder from '../../pages/modules/InvoiceBuilder';
 import html2pdf from 'html2pdf.js';
@@ -27,8 +27,8 @@ export default function CustomerProfile() {
     });
     const [isSavingPayment, setIsSavingPayment] = useState(false);
 
-    const handleReceivePayment = async (e) => {
-        e.preventDefault();
+    const handleReceivePayment = async (event) => {
+        event.preventDefault();
         if (isSavingPayment) return;
 
         try {
@@ -64,10 +64,8 @@ export default function CustomerProfile() {
             setPaymentData({ amount: '', date: new Date().toISOString().slice(0, 10), method: 'CASH' });
             setSelectedPaymentId(null);
             fetchCustomerLedger();
-        } catch (error) {
-            console.error('Payment Error:', error);
-            const errorMsg = error.response?.data?.message || error.message || 'Failed to save payment';
-            toast.error(errorMsg);
+        } catch {
+            toast.error('Failed to save payment');
         } finally {
             setIsSavingPayment(false);
         }
@@ -199,29 +197,29 @@ export default function CustomerProfile() {
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             }).from(element).save();
             toast.success('PDF downloaded!', { id: 'pdf-gen' });
-        } catch (e) {
+        } catch {
             toast.error('Failed to generate PDF', { id: 'pdf-gen' });
         }
     };
 
-    const fetchCustomerLedger = async () => {
+    const fetchCustomerLedger = React.useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get(`/customers/${id}/ledger`);
             setCustomer(res.data);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load customer profile');
             navigate('/dashboard/customers');
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, navigate]);
 
     useEffect(() => {
         if (id) {
             fetchCustomerLedger();
         }
-    }, [id]);
+    }, [id, fetchCustomerLedger]);
 
     if (loading) return <div className="p-8"><div className="animate-pulse">Loading profile...</div></div>;
     if (!customer) return <div className="p-8">Customer not found.</div>;

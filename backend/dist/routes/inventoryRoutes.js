@@ -1,0 +1,15 @@
+import express from 'express';
+import * as inventoryController from '../controllers/modules/inventoryController.js';
+import { authenticate, authorize } from '../src/middleware/auth.js';
+import { tenantIsolation } from '../src/middleware/tenant.js';
+const router = express.Router();
+router.use(authenticate);
+router.use(tenantIsolation);
+router.get('/', inventoryController.getInventory);
+router.get('/:id', inventoryController.getInventoryItemById);
+router.post('/', authorize('OWNER', 'ADMIN'), inventoryController.createInventoryItem);
+router.patch('/:id', authorize('OWNER', 'ADMIN'), inventoryController.updateInventoryItem);
+router.delete('/:id', authorize('OWNER', 'ADMIN'), inventoryController.deleteInventoryItem);
+router.post('/:id/restore', authorize('OWNER', 'ADMIN'), inventoryController.restoreInventoryItem);
+router.delete('/:id/permanent', authorize('OWNER', 'ADMIN'), inventoryController.deleteItemPermanently);
+export default router;

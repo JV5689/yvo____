@@ -1,0 +1,48 @@
+
+=== D:\yvo____\frontend\parse_lint.js ===
+Line 1: 'require' is not defined. [no-undef]
+
+=== D:\yvo____\frontend\src\components\layout\GlobalModal.jsx ===
+Line 1: 'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+=== D:\yvo____\frontend\src\pages\DashboardHome.jsx ===
+Line 3: 'useOutletContext' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+Line 3: 'useNavigate' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+=== D:\yvo____\frontend\src\pages\Login.jsx ===
+Line 113: 'showPassword' is not defined. [no-undef]
+Line 139: 'showPassword' is not defined. [no-undef]
+
+=== D:\yvo____\frontend\src\pages\employee\EmployeeCalendar.jsx ===
+Line 44: 'scrollLeft' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+Line 50: 'scrollRight' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+
+=== D:\yvo____\frontend\src\pages\employee\EmployeeLeave.jsx ===
+Line 44: 'error' is defined but never used. [no-unused-vars]
+
+=== D:\yvo____\frontend\src\pages\modules\BackupAndReports.jsx ===
+Line 50: 'e' is defined but never used. [no-unused-vars]
+Line 72: 'e' is defined but never used. [no-unused-vars]
+Line 96: 'error' is defined but never used. [no-unused-vars]
+Line 136: 'error' is defined but never used. [no-unused-vars]
+Line 187: 'e' is defined but never used. [no-unused-vars]
+Line 225: 'e' is defined but never used. [no-unused-vars]
+
+=== D:\yvo____\frontend\src\pages\modules\Broadcasts.jsx ===
+Line 52: Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect'). [null]
+Line 54: Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect'). [null]
+
+=== D:\yvo____\frontend\src\pages\modules\Customers.jsx ===
+Line 2: 'useOutletContext' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+Line 6: 'useUI' is defined but never used. Allowed unused vars must match /^[A-Z_]/u. [no-unused-vars]
+Line 41: 'err' is defined but never used. [no-unused-vars]
+
+=== D:\yvo____\frontend\src\pages\modules\InvoiceBuilder.jsx ===
+Line 302: 'err' is defined but never used. [no-unused-vars]
+
+=== D:\yvo____\frontend\src\pages\super-admin\Companies.jsx ===
+Line 46: Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect'). [null]
+
+=== D:\yvo____\frontend\temp_lint.js ===
+Line 1: 'require' is not defined. [no-undef]
+Line 2: 'require' is not defined. [no-undef]

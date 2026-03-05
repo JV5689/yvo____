@@ -13,9 +13,9 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
         if (employee?.id) {
             fetchEmployeeDetails();
         }
-    }, [employee]);
+    }, [employee, fetchEmployeeDetails]);
 
-    const fetchEmployeeDetails = async () => {
+    const fetchEmployeeDetails = React.useCallback(async () => {
         try {
             setLoading(true);
             const companyId = localStorage.getItem('companyId');
@@ -25,7 +25,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
                 params: { companyId, employeeId: employee.id }
             });
 
-            const records = salaryRes.data.map((record, index) => {
+            const records = salaryRes.data.map((record) => {
                 // Robustness: If bonus is 0 but Math doesn't add up, infer it (for legacy data)
                 const storedBonus = record.bonus || 0;
                 const storedDeduction = record.deductionAmount || 0;
@@ -82,7 +82,7 @@ export default function EmployeeDetailsModal({ employee, onClose }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [employee.id, employee.freeLeavesPerMonth]);
 
     if (!employee) return null;
 

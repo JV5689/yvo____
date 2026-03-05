@@ -50,7 +50,7 @@ export default function ReportsWidget() {
             html2pdf().from(element).save(`Quick_Finance_Report_${new Date().toISOString().split('T')[0]}.pdf`);
             toast.dismiss();
             toast.success("Finance report downloaded");
-        } catch (e) {
+        } catch {
             toast.dismiss();
             toast.error("Failed to generate report");
         }
@@ -88,7 +88,7 @@ export default function ReportsWidget() {
 
             toast.dismiss();
             toast.success(`${type} export complete`);
-        } catch (e) {
+        } catch {
             toast.dismiss();
             toast.error("Export failed");
         }

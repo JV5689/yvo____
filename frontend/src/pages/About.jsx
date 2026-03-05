@@ -17,6 +17,7 @@ import {
   Lightbulb
 } from 'lucide-react';
 
+// eslint-disable-next-line no-unused-vars
 const Card = ({ icon: Icon, title, description, centerText = true }) => (
   <div className={`bg-white p-8 rounded-lg shadow-sm border border-gray-100 flex flex-col ${centerText ? 'items-center text-center' : 'items-start text-left'} hover:shadow-md transition-shadow duration-300 h-full`}>
     <div className="mb-4">

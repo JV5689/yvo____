@@ -8,7 +8,6 @@ export default function Inventory() {
     const [searchTerm, setSearchTerm] = useState('');
     const [inventory, setInventory] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
     const [showTrash, setShowTrash] = useState(false);
 
@@ -28,6 +27,7 @@ export default function Inventory() {
 
     useEffect(() => {
         fetchInventory();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showTrash]);
 
     const fetchInventory = async () => {
@@ -43,7 +43,6 @@ export default function Inventory() {
             setInventory(response.data);
         } catch (err) {
             console.error("Failed to fetch inventory", err);
-            setError("Failed to load inventory.");
         } finally {
             setLoading(false);
         }

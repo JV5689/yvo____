@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 
@@ -9,33 +10,34 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check for existing token
-        const token = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-        const role = localStorage.getItem('userRole');
-        const coId = localStorage.getItem('companyId');
+        const checkAuth = async () => {
+            const token = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+            const role = localStorage.getItem('userRole');
+            const coId = localStorage.getItem('companyId');
 
-        // Clean up malformed IDs from previous bug
-        if (coId === 'undefined' || coId === 'null') {
-            localStorage.removeItem('companyId');
-        }
+            if (coId === 'undefined' || coId === 'null') {
+                localStorage.removeItem('companyId');
+            }
 
-        if (token && storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
+            if (token && storedUser) {
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
 
-            // If employee, refresh profile to get latest company info
-            if (role === 'employee' || parsedUser.role === 'employee') {
-                api.get('/employee/auth/me')
-                    .then(res => {
+                if (role === 'employee' || parsedUser.role === 'employee') {
+                    try {
+                        const res = await api.get('/employee/auth/me');
                         const updatedUser = { ...parsedUser, ...res.data };
                         localStorage.setItem('user', JSON.stringify(updatedUser));
                         setUser(updatedUser);
-                    })
-                    .catch(e => console.error("Profile refresh failed", e));
+                    } catch (e) {
+                        console.error("Profile refresh failed", e);
+                    }
+                }
             }
-        }
-        setLoading(false);
+            setLoading(false);
+        };
+        checkAuth();
     }, []);
 
     const login = async (email, password) => {

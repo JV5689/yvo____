@@ -14,6 +14,7 @@ export default function SuperAdminAnalytics() {
 
     useEffect(() => {
         fetchStats();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [year]);
 
     const fetchStats = async () => {

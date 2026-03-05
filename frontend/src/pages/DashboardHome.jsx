@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useOutletContext, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -16,8 +15,6 @@ import ReportsWidget from '../components/dashboard/ReportsWidget';
 
 export default function DashboardHome() {
     const { user } = useAuth();
-    const { config } = useOutletContext();
-    const navigate = useNavigate();
 
     // State
     const [stats, setStats] = useState({

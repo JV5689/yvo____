@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Plus, Save, Download, Trash2, Printer, Search, Lock, Unlock, ChevronUp, ChevronDown, Users, Layout, Settings, Type, Image, FileText, ZoomIn, ZoomOut, MousePointer2 } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useUI } from '../../context/UIContext';
@@ -12,7 +11,7 @@ import { injectPdfColorFix } from '../../utils/pdfColorFix';
 export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditing = false }) {
     const navigate = useNavigate();
     const { id: paramId } = useParams();
-    const { alert, confirm, prompt } = useUI();
+    const { alert, prompt } = useUI();
     const [searchParams] = useSearchParams();
     const templateIdFromUrl = searchParams.get('templateId');
     const id = propId || paramId;
@@ -65,7 +64,7 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             }).from(el).save();
             toast.success('PDF downloaded!', { id: 'pdf-gen' });
-        } catch (e) {
+        } catch {
             toast.error('Failed to generate PDF', { id: 'pdf-gen' });
         }
     }, [invoiceData.invoiceNumber]);
@@ -101,7 +100,8 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                     // --- Loading existing invoice ---
                     const invRes = await api.get(`/invoices/${id}`);
                     const data = invRes.data;
-                    const cleansedItems = (data.items || []).map(({ id: _id, invoiceId: _inv, customFields: _cf, invoice: _i, inventory: _inv2, ...rest }) => rest);
+                    // eslint-disable-next-line no-unused-vars
+                    const cleansedItems = (data.items || []).map(({ id: _i, invoiceId: _ii, customFields: _cf, invoice: _inv, inventory: _invent, ...rest }) => rest);
                     setInvoiceData({
                         invoiceNumber: data.invoiceNumber || '',
                         customerId: data.customerId || '',
@@ -110,7 +110,7 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                         gstNumber: data.gstNumber || '',
                         date: data.date ? new Date(data.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
                         notes: typeof data.notes === 'string' ? data.notes : '',
-                        items: cleanedItems,
+                        items: cleansedItems,
                         status: data.status || 'DRAFT',
                         taxRate: data.taxRate !== undefined ? data.taxRate : 10,
                         customAttributes: Array.isArray(data.customAttributes) ? data.customAttributes : [],
@@ -168,12 +168,12 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                 }
 
                 setLoading(false);
-            } catch (err) {
-                console.error(err);
+            } catch {
                 setLoading(false);
             }
         };
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, templateIdFromUrl, searchParams]);
 
     const handleUpdateData = useCallback((field, value) => {
@@ -299,7 +299,7 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                                         return;
                                     }
                                     setIsEditing(true);
-                                } catch (err) {
+                                } catch {
                                     await alert('Error', 'Password verification failed.', 'error');
                                 }
                             }}
@@ -550,7 +550,7 @@ export default function InvoiceBuilder({ invoiceId: propId, onClose, startEditin
                                         handleUpdateData('clientAddress', res.data.address);
                                         setShowCustomerModal(false);
                                         toast.success("Client added!");
-                                    } catch (e) { toast.error("Failed to add client"); }
+                                    } catch { toast.error("Failed to add client"); }
                                 }}
                                 className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-black rounded-xl hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-200 transition-all active:scale-95"
                             >

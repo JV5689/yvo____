@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useUI } from '../../context/UIContext';
 import { AlertCircle, CheckCircle2, Info, X, HelpCircle, Lock } from 'lucide-react';
 
@@ -6,11 +6,13 @@ const GlobalModal = () => {
     const { modalConfig } = useUI();
     const [inputValue, setInputValue] = useState('');
 
-    useEffect(() => {
+    const [prevModal, setPrevModal] = useState(modalConfig);
+    if (modalConfig !== prevModal) {
+        setPrevModal(modalConfig);
         if (modalConfig?.type === 'prompt') {
             setInputValue('');
         }
-    }, [modalConfig]);
+    }
 
     if (!modalConfig) return null;
 
@@ -113,9 +115,9 @@ const GlobalModal = () => {
 
                 {/* Decorative border at top */}
                 <div className={`absolute top-0 left-0 w-full h-1.5 ${type === 'confirm' ? 'bg-amber-400' :
-                        type === 'prompt' ? 'bg-indigo-400' :
-                            alertType === 'success' ? 'bg-emerald-400' :
-                                alertType === 'error' ? 'bg-rose-400' : 'bg-indigo-400'
+                    type === 'prompt' ? 'bg-indigo-400' :
+                        alertType === 'success' ? 'bg-emerald-400' :
+                            alertType === 'error' ? 'bg-rose-400' : 'bg-indigo-400'
                     }`}></div>
             </div>
         </div>

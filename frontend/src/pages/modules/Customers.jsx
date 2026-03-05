@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { Plus, Search, User, Phone, FileText, IndianRupee, Eye, X, Trash2, Trash, RotateCcw, Edit2 } from 'lucide-react';
-import { useUI } from '../../context/UIContext';
 
 export default function Customers() {
-    const { config } = useOutletContext();
     const navigate = useNavigate();
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const { confirm } = useUI();
-    const [isViewDeleted, setIsViewDeleted] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [currentCustomerId, setCurrentCustomerId] = useState(null);
+    const [isViewDeleted] = useState(false);
+    const [isEditing] = useState(false);
 
     // Payment Modal State
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -41,7 +37,7 @@ export default function Customers() {
             if (!companyId) return;
             const res = await api.get(`/customers`, { params: { companyId, isDeleted: isViewDeleted } });
             setCustomers(res.data);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load customers');
         } finally {
             setLoading(false);
@@ -50,6 +46,7 @@ export default function Customers() {
 
     useEffect(() => {
         fetchCustomers();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleCreateCustomer = async (e) => {

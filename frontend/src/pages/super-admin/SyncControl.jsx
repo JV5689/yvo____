@@ -28,8 +28,7 @@ export default function SyncControl() {
             setStats(statsRes.data);
             setLogs(logsRes.data);
             setLoading(false);
-        } catch (err) {
-            console.error("Failed to load sync data", err);
+        } catch {
             toast.error("Failed to load system status");
             setLoading(false);
         }
@@ -41,7 +40,7 @@ export default function SyncControl() {
             await api.post('/sa/sync/manual-backup');
             toast.success("System backup triggered successfully!");
             setTimeout(fetchData, 2000); // Refresh shortly after
-        } catch (err) {
+        } catch {
             toast.error("Backup trigger failed");
         } finally {
             setSyncing(false);
@@ -56,7 +55,7 @@ export default function SyncControl() {
         try {
             await api.patch('/sa/sync/config', newSettings);
             toast.success("Configuration updated");
-        } catch (err) {
+        } catch {
             toast.error("Failed to update settings");
             // Revert
             setStats(prev => ({ ...prev, settings: { ...prev.settings, [key]: !newSettings[key] } }));

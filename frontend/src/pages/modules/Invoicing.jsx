@@ -8,7 +8,7 @@ import html2pdf from 'html2pdf.js';
 import { useUI } from '../../context/UIContext';
 
 export default function Invoicing() {
-    const { alert, confirm, prompt, toast } = useUI();
+    const { alert, confirm, prompt } = useUI();
     const [searchTerm, setSearchTerm] = useState('');
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,13 +26,14 @@ export default function Invoicing() {
     useEffect(() => {
         fetchInvoices();
         fetchConfig();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isViewDeleted]);
 
     const fetchConfig = async () => {
         try {
             const res = await api.get('/company/config');
             setCompanyConfig(res.data.company);
-        } catch (e) {
+        } catch {
             console.error("Failed to load company config");
         }
     };
@@ -260,7 +261,7 @@ export default function Invoicing() {
         try {
             await api.patch(`/invoices/${id}`, { isDeleted: false });
             fetchInvoices();
-        } catch (err) {
+        } catch {
             alert("Restore Failed", "Failed to restore invoice", "error");
         }
     };

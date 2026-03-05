@@ -7,7 +7,6 @@ export default function CalendarModule() {
     const { alert, confirm, toast } = useUI();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
     // State for creating/editing
@@ -28,6 +27,7 @@ export default function CalendarModule() {
 
     useEffect(() => {
         fetchEvents();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDate]);
 
     const fetchEvents = async () => {
@@ -46,8 +46,6 @@ export default function CalendarModule() {
             setEvents(response.data);
         } catch (err) {
             console.error("Failed to fetch events", err);
-        } finally {
-            setLoading(false);
         }
     };
 

@@ -48,7 +48,7 @@ export default function Leaves() {
             await api.patch(`/employees/leaves/${id}`, { status, remark });
             toast.success(`Leave processed: ${status}`);
             fetchLeaves();
-        } catch (err) {
+        } catch {
             await alert('Status Update Failed', 'Failed to update leave status.', 'error');
         }
     };

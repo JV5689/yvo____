@@ -51,7 +51,7 @@ export default function InvoiceViewerModal({ invoiceId, isOpen, onClose, onEdite
                         // Template fetch failed, layout stays empty
                     }
                 }
-            } catch (err) {
+            } catch {
                 setError('Failed to load invoice');
                 toast.error('Failed to load invoice');
             } finally {
