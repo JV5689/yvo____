@@ -311,7 +311,7 @@ export default function Broadcasts() {
                         {groups.map(g => (
                             <div
                                 key={g._id}
-                                onClick={() => setSelectedGroup(g)}
+                                onClick={() => { setSelectedGroup(g); setSelectedEmployeeId(''); }}
                                 className="group relative p-5 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all cursor-pointer bg-white"
                             >
                                 <div className="flex justify-between items-start mb-2">

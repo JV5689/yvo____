@@ -74,6 +74,17 @@ export const createBroadcastGroup = async (req: Request, res: Response) => {
     }
 };
 
+// Helper to flatten Prisma BroadcastGroup members into the shape the frontend expects
+const formatGroup = (group: any) => ({
+    ...group,
+    _id: group.id, // Frontend uses _id for groups (MongoDB convention)
+    members: (group.members || []).map((m: any) => ({
+        _id: m.employeeId,
+        firstName: m.employee?.firstName || '',
+        lastName: m.employee?.lastName || '',
+    }))
+});
+
 export const getBroadcastGroups = async (req: Request, res: Response) => {
     try {
         const { companyId } = req.query;
@@ -85,7 +96,7 @@ export const getBroadcastGroups = async (req: Request, res: Response) => {
                 }
             }
         });
-        res.json(groups);
+        res.json(groups.map(formatGroup));
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -116,7 +127,7 @@ export const updateBroadcastGroup = async (req: Request, res: Response) => {
 
         if (!group) return res.status(404).json({ message: 'Group not found' });
 
-        res.json(group);
+        res.json(formatGroup(group));
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
